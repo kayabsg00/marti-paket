@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Martı Paket Hesaplayıcı</title>
+<meta name="theme-color" content="#0f172a">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Martı Paket">
+<style>
+:root{--bg:#0f172a;--card:#1e293b;--line:#334155;--txt:#e2e8f0;--mut:#94a3b8;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.45 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif;padding:calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 24px)}
+h1{font-size:22px;margin:4px 0 14px}h2{font-size:18px;margin:0 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+label{display:block;font-size:14px;color:var(--mut);margin-bottom:6px}
+input{width:100%;font-size:20px;padding:14px;border-radius:12px;border:1px solid var(--line);background:#0b1220;color:var(--txt);margin-bottom:12px;-webkit-appearance:none;appearance:none}
+input[type=date]{min-height:54px}
+.row{display:flex;gap:10px}.row>div{flex:1}
+button{font-size:18px;font-weight:600;border:0;border-radius:12px;padding:15px;width:100%;background:var(--acc);color:#052e16;cursor:pointer}
+button.sec{background:#334155;color:var(--txt);font-size:15px;padding:12px}
+button.del{background:transparent;color:var(--bad);width:auto;padding:8px 10px;font-size:15px;border:1px solid #7f1d1d}
+.pkg .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.badge{font-size:13px;padding:4px 10px;border-radius:999px;background:#334155}
+.badge.ok{background:var(--acc);color:#052e16;font-weight:700}
+.bar{height:12px;background:#0b1220;border-radius:99px;overflow:hidden;margin:6px 0 12px}
+.bar>i{display:block;height:100%;background:var(--acc)}
+.kv{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #334155;font-size:15px}
+.kv:last-child{border:0}.kv b{font-weight:600}
+.pos{color:var(--acc)}.neg{color:var(--bad)}.mut{color:var(--mut);font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{padding:8px 4px;text-align:right;border-bottom:1px solid var(--line)}th:first-child,td:first-child{text-align:left}
+th{color:var(--mut);font-weight:500;font-size:13px}
+.err{color:var(--bad);font-size:14px;min-height:18px;margin:-4px 0 8px}
+.tools{display:flex;gap:10px;margin-top:12px}
+</style>
+</head>
+<body>
+<h1>🛴 Martı Paket Hesaplayıcı</h1>
+
+<div class="card">
+  <h2>Sürüş ekle</h2>
+  <div class="row">
+    <div><label for="dk">Süre (dk)</label><input id="dk" inputmode="decimal" placeholder="ör. 22" autocomplete="off"></div>
+    <div><label for="tl">Kesilen (TL)</label><input id="tl" inputmode="decimal" placeholder="ör. 48,50" autocomplete="off"></div>
+  </div>
+  <label for="tarih">Tarih</label><input id="tarih" type="date">
+  <div class="err" id="err"></div>
+  <button id="ekle">Sürüşü kaydet</button>
+</div>
+
+<div class="card" id="oranCard">
+  <div class="kv"><span>Ortalama dakika ücreti</span><b id="oran">-</b></div>
+  <div id="manuelWrap" style="margin-top:10px">
+    <label for="manuel">Henüz sürüş yok. Tahmini TL/dk gir:</label>
+    <input id="manuel" inputmode="decimal" placeholder="ör. 2,5">
+  </div>
+</div>
+
+<div id="paketler"></div>
+
+<div class="card">
+  <h2>Sürüş geçmişi</h2>
+  <div id="gecmis"></div>
+  <div class="tools">
+    <button class="sec" id="disa">Yedeği indir</button>
+    <button class="sec" id="ice">Yedek yükle</button>
+    <input type="file" id="dosya" accept="application/json,.json" hidden>
+  </div>
+  <p class="mut">Kayıtlar sadece bu telefonda saklanır. Telefon değiştirmeden veya tarayıcı verisini silmeden önce yedeği indir.</p>
+</div>
+
+<script>
+const KEY='marti-rides-v1', RKEY='marti-manuel-rate';
+const PAKETLER=[
+  {ad:'3 saatlik paket',deger:450,gerekli:2,esik:20,gun:1},
+  {ad:'1 günlük paket',deger:1000,gerekli:4,esik:20,gun:1},
+  {ad:'1 haftalık paket',deger:5000,gerekli:30,esik:15,gun:7}
+];
+const $=id=>document.getElementById(id);
+const num=s=>{s=String(s).trim().replace(/\s/g,'');if(s.includes(',')){s=s.replace(/\./g,'').replace(',','.')}const n=parseFloat(s);return isFinite(n)?n:NaN};
+const tl=n=>n.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})+' TL';
+const pad=n=>String(n).padStart(2,'0');
+const isoLocal=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const trDate=iso=>{const [y,m,d]=iso.split('-');return d+'.'+m+'.'+y};
+let rides=[];
+try{rides=JSON.parse(localStorage.getItem(KEY))||[]}catch(e){rides=[]}
+const save=()=>localStorage.setItem(KEY,JSON.stringify(rides));
+$('tarih').value=isoLocal(new Date());
+$('manuel').value=localStorage.getItem(RKEY)||'';
+
+function oran(){
+  const m=rides.reduce((a,r)=>a+r.dk,0), t=rides.reduce((a,r)=>a+r.tl,0);
+  if(m>0) return {v:t/m,kaynak:'ort'};
+  const v=num($('manuel').value); return {v:isFinite(v)?v:0,kaynak:'manuel'};
+}
+function render(){
+  const o=oran();
+  $('oran').textContent=o.v? o.v.toLocaleString('tr-TR',{maximumFractionDigits:2})+' TL/dk'+(o.kaynak==='manuel'?' (manuel)':''):'-';
+  $('manuelWrap').style.display=rides.length?'none':'block';
+  const bugun=new Date(); bugun.setHours(0,0,0,0);
+  let html='';
+  for(const p of PAKETLER){
+    const bas=new Date(bugun); bas.setDate(bas.getDate()-(p.gun-1));
+    const basIso=isoLocal(bas), bitIso=isoLocal(bugun);
+    const pencere=rides.filter(r=>r.tarih>=basIso&&r.tarih<=bitIso);
+    const sayilan=pencere.filter(r=>r.dk>=p.esik), kisa=pencere.length-sayilan.length;
+    const yapilan=Math.min(sayilan.length,p.gerekli), kalan=p.gerekli-yapilan, ok=kalan===0;
+    const odenen=sayilan.slice().sort((a,b)=>a.id-b.id).slice(0,p.gerekli).reduce((a,r)=>a+r.tl,0);
+    const tahmin=kalan*p.esik*o.v, net=p.deger-odenen-tahmin;
+    html+=`<div class="card pkg"><div class="top"><h2 style="margin:0">${p.ad}</h2><span class="badge ${ok?'ok':''}">${ok?'Kazanıldı ✓':yapilan+' / '+p.gerekli}</span></div>
+    <div class="mut">${p.gun===1?'Bugün':'Son 7 gün'} içinde ${p.esik} dk ve üzeri ${p.gerekli} sürüş · Değer: ${tl(p.deger)}</div>
+    <div class="bar"><i style="width:${yapilan/p.gerekli*100}%"></i></div>
+    <div class="kv"><span>Kalan sürüş</span><b>${kalan}</b></div>
+    <div class="kv"><span>Kalan en az süre</span><b>${kalan*p.esik} dk</b></div>
+    <div class="kv"><span>Sayılan sürüşlere ödenen</span><b>${tl(odenen)}</b></div>
+    <div class="kv"><span>Tahmini kalan maliyet</span><b>${tl(tahmin)}</b></div>
+    <div class="kv"><span>Net kazanç</span><b class="${net>=0?'pos':'neg'}">${tl(net)}</b></div>
+    ${kisa?`<div class="mut" style="margin-top:6px">⚠️ ${kisa} sürüş ${p.esik} dk'dan kısa olduğu için sayılmadı.</div>`:''}</div>`;
+  }
+  $('paketler').innerHTML=html;
+  const s=rides.slice().sort((a,b)=>b.tarih.localeCompare(a.tarih)||b.id-a.id);
+  $('gecmis').innerHTML=s.length?`<table><tr><th>Tarih</th><th>dk</th><th>TL</th><th>TL/dk</th><th></th></tr>${s.map(r=>`<tr><td>${trDate(r.tarih)}</td><td>${r.dk.toLocaleString('tr-TR')}</td><td>${r.tl.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td>${r.dk?(r.tl/r.dk).toLocaleString('tr-TR',{maximumFractionDigits:2}):'-'}</td><td><button class="del" data-id="${r.id}">Sil</button></td></tr>`).join('')}</table>`:'<p class="mut">Henüz sürüş eklenmedi.</p>';
+}
+$('ekle').onclick=()=>{
+  const dk=num($('dk').value), t=num($('tl').value), tarih=$('tarih').value||isoLocal(new Date());
+  if(!(dk>0)){$('err').textContent='Geçerli bir dakika gir.';return}
+  if(!(t>=0)){$('err').textContent='Geçerli bir tutar gir.';return}
+  $('err').textContent='';
+  rides.push({id:Date.now(),dk,tl:t,tarih}); save();
+  $('dk').value='';$('tl').value='';$('tarih').value=isoLocal(new Date());
+  render();
+};
+$('gecmis').onclick=e=>{const b=e.target.closest('.del');if(!b)return;if(!confirm('Bu sürüş silinsin mi?'))return;rides=rides.filter(r=>r.id!=b.dataset.id);save();render()};
+$('manuel').oninput=()=>{localStorage.setItem(RKEY,$('manuel').value);render()};
+$('disa').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(rides,null,1)],{type:'application/json'}));a.download='marti-yedek-'+isoLocal(new Date())+'.json';a.click()};
+$('ice').onclick=()=>$('dosya').click();
+$('dosya').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const d=JSON.parse(await f.text());if(!Array.isArray(d))throw 0;
+  const ok=d.filter(r=>r&&typeof r.dk==='number'&&typeof r.tl==='number'&&/^\d{4}-\d\d-\d\d$/.test(r.tarih)).map((r,i)=>({id:r.id||Date.now()+i,dk:r.dk,tl:r.tl,tarih:r.tarih}));
+  if(confirm(ok.length+' sürüş yüklenecek ve mevcut kayıtların yerini alacak. Devam?')){rides=ok;save();render()}}catch(_){alert('Geçersiz yedek dosyası.')}e.target.value=''};
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)render()});
+render();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
