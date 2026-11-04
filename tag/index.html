@@ -1,8 +1,7 @@
 <!DOCTYPE html><html lang="tr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0e1116"><meta name="apple-mobile-web-app-capable" content="yes">
-<link rel="manifest" href="./manifest.json"><link rel="icon" href="./icon.svg">
-<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
+<link rel="manifest" href="manifest.json"><link rel="icon" href="icon.svg">
 <title>TAG Kazanç</title>
 <style>
 :root{--bg:#0e1116;--card:#171b22;--line:#262c36;--tx:#e6e9ef;--mut:#8b93a1;--g:#22c55e;--r:#ef4444;--a:#f59e0b;--b:#3b82f6}
@@ -71,8 +70,8 @@ function rDay(){const el=document.getElementById('pgDay');
   el.innerHTML=`<div class="card c"><p class="mut">Şu an açık gün yok</p><button class="big g" id="btnOpen" onclick="openDay()">▶ Günü Aç</button></div>`+(last?summary(last,'Son gün'):'');return}
  const d=S.open,c=calc(d);
  el.innerHTML=`<div class="card"><div class="mut c">Açılış: ${tm(d.start)} · ${new Date(d.start).toLocaleDateString('tr-TR')}</div><div class="timer" id="timer">${clock(c.ms)}</div>
- <div class="stats"><div><span class="mut">Gelir (${c.rides} iş)</span><b class="pos">${tl(c.inc)}</b></div><div><span class="mut">Gider</span><b class="neg">${tl(c.ex)}</b></div>
- <div><span class="mut">Net</span><b>${tl(c.net)}</b></div><div><span class="mut">Saatlik net</span><b id="ph">${tl(c.ph)}</b></div></div></div>
+ <div class="stats"><div><span class="mut">Gelir</span><b class="pos">${tl(c.inc)}</b></div><div><span class="mut">Gider</span><b class="neg">${tl(c.ex)}</b></div>
+ <div><span class="mut">Net</span><b>${tl(c.net)}</b></div><div><span class="mut">Müşteri</span><b>${c.rides}</b></div></div></div>
  <div class="card"><div class="tabs"><button class="${tab==='in'?'on':''}" onclick="tab='in';rDay()">+ Gelir</button><button class="${tab==='ex'?'on':''}" onclick="tab='ex';rDay()">− Gider</button></div>
  <input id="amt" class="num" inputmode="decimal" placeholder="₺ tutar" onkeydown="if(event.key==='Enter')addE()">
  <input id="note" placeholder="${tab==='in'?'Not (isteğe bağlı)':'Ne gideri? (yemek, yıkama…)'}" style="margin:8px 0;font-size:16px" onkeydown="if(event.key==='Enter')addE()">
@@ -94,7 +93,7 @@ function summary(d,title){const c=calc(d);return `<div class="card"><h3>${title|
  <div class="stats"><div><span class="mut">Gelir</span><b class="pos">${tl(c.inc)}</b></div><div><span class="mut">Gider (yakıt dahil)</span><b class="neg">${tl(c.ex)}</b></div>
  <div><span class="mut">Net</span><b class="${c.net<0?'neg':'pos'}">${tl(c.net)}</b></div><div><span class="mut">Süre</span><b>${dur(c.ms)}</b></div>
  <div><span class="mut">Saatlik net</span><b>${tl(c.ph)}</b></div><div><span class="mut">Km başı net</span><b>${d.km?tl(c.pk):'—'}</b></div>
- <div><span class="mut">İş sayısı</span><b>${c.rides}</b></div><div><span class="mut">Km / Yakıt</span><b>${nf.format(d.km||0)} km · ${tl(c.fuel)}</b></div></div></div>`}
+ <div><span class="mut">Müşteri sayısı</span><b>${c.rides}</b></div><div><span class="mut">Müşteri başı ort.</span><b>${c.rides?tl(c.inc/c.rides):'—'}</b></div><div><span class="mut">Saatte müşteri</span><b>${c.h>0?nf.format(Math.round(c.rides/c.h*10)/10):'—'}</b></div><div><span class="mut">Km / Yakıt</span><b>${nf.format(d.km||0)} km · ${tl(c.fuel)}</b></div></div></div>`}
 function showDay(id){const d=S.days.find(x=>x.id===id);if(!d)return;
  M(summary(d,'Gün özeti')+`<div class="card"><h3>Kayıtlar</h3>${d.entries.map(e=>`<div class="e"><span class="mut">${tm(e.ts)}</span><span style="flex:1">${esc(e.note)}</span><span class="amt ${e.t==='in'?'pos':'neg'}">${e.t==='in'?'+':'−'}${tl(e.v)}</span></div>`).join('')||'<p class="mut">Kayıt yok</p>'}</div>
  <div class="row"><button class="r" onclick="delDay('${d.id}')">Günü Sil</button><button onclick="closeM()">Kapat</button></div>`)}
@@ -111,7 +110,7 @@ function rCal(){const el=document.getElementById('pgCal');const y=calM.getFullYe
  el.innerHTML=`<div class="card"><div class="row" style="align-items:center"><button onclick="calM.setMonth(calM.getMonth()-1);rCal()" style="flex:0">◀</button>
  <h2 class="c" style="flex:1;margin:0">${calM.toLocaleDateString('tr-TR',{month:'long',year:'numeric'})}</h2><button onclick="calM.setMonth(calM.getMonth()+1);rCal()" style="flex:0">▶</button></div><br>
  <div class="stats" style="grid-template-columns:1fr 1fr 1fr"><div><span class="mut">Ay net</span><b class="${net<0?'neg':'pos'}">${tl(net)}</b></div><div><span class="mut">Saat</span><b>${nf.format(Math.round(h*10)/10)}</b></div><div><span class="mut">Ort. saatlik</span><b>${tl(h?net/h:0)}</b></div></div>
- <div class="mut c" style="margin-top:6px">${days.length} gün çalışıldı</div></div><div class="card cal">${g}</div>`}
+ <div class="mut c" style="margin-top:6px">${days.length} gün çalışıldı · ${days.reduce((a,d)=>a+calc(d).rides,0)} müşteri</div></div><div class="card cal">${g}</div>`}
 function dayList(k){const L=S.days.filter(d=>dkey(d.start)===k);if(L.length===1)return showDay(L[0].id);
  M(`<h2>${dt(L[0].start)}</h2>`+L.map(d=>{const c=calc(d);return `<button style="width:100%;margin-bottom:8px;text-align:left" onclick="showDay('${d.id}')">${tm(d.start)}–${tm(d.end)} · Net ${tl(c.net)} · ${dur(c.ms)}</button>`}).join(''))}
 function walletOpen(){const w=walletTotal();
@@ -133,8 +132,9 @@ function imp(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onloa
 function wipe(){if(confirm('TÜM veriler silinecek. Emin misin?')&&confirm('Geri alınamaz. Son kez onayla.')){S={days:[],open:null,adj:[]};save();render()}}
 function M(h){document.getElementById('sheet').innerHTML=h;document.getElementById('modal').classList.add('on')}
 function closeM(){document.getElementById('modal').classList.remove('on')}
-setInterval(()=>{if(S.open){const c=calc(S.open);const t=document.getElementById('timer');if(t)t.textContent=clock(c.ms);const p=document.getElementById('ph');if(p)p.textContent=tl(c.ph)}},1000);
+setInterval(()=>{if(S.open){const c=calc(S.open);const t=document.getElementById('timer');if(t)t.textContent=clock(c.ms)}},1000);
 window.addEventListener('storage',()=>{S=load();render()});
 render();
-if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{});
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
 </script></body></html>
