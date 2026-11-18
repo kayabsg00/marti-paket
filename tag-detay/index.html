@@ -1,0 +1,1163 @@
+<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0e1116"><meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="TAG Detay">
+<link rel="manifest" href="./manifest.json"><link rel="icon" href="./icon.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
+<title>TAG Detay</title>
+<style>
+:root{--bg:#0e1116;--card:#171b22;--line:#262c36;--tx:#e6e9ef;--mut:#8b93a1;--g:#22c55e;--r:#ef4444;--a:#f59e0b;--b:#3b82f6}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{color-scheme:dark}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-bottom:80px}
+header{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line)}
+.wallet{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 12px;cursor:pointer}
+.wallet small{color:var(--mut);display:block;font-size:12px}.wallet b{font-size:20px}
+main{padding:14px;max-width:560px;margin:auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
+button{font:inherit;border:0;border-radius:14px;padding:14px;color:#fff;background:var(--line);cursor:pointer;font-weight:600}
+.big{width:100%;font-size:22px;padding:22px}.g{background:var(--g);color:#04210f}.r{background:var(--r)}.b{background:var(--b)}.a{background:var(--a);color:#231400}
+input,textarea,select{font:inherit;width:100%;background:#0b0e13;color:var(--tx);border:1px solid var(--line);border-radius:12px;padding:14px;font-size:18px}
+.num{font-size:34px;text-align:center;font-weight:700}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.timer{font-size:44px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums}
+.mut{color:var(--mut);font-size:14px}.c{text-align:center}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stats div{background:#0b0e13;border-radius:12px;padding:10px}.stats b{display:block;font-size:20px}
+.tabs{display:flex;background:var(--card);border-radius:14px;padding:4px;margin-bottom:10px}.tabs button{flex:1;background:none;padding:10px}.tabs button.on{background:var(--line)}
+.e{display:flex;align-items:flex-start;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}.e:last-child{border:0}
+.e .body{flex:1;min-width:0}
+.e .amt{font-weight:700;min-width:78px;text-align:right;white-space:nowrap}.e .sm{padding:8px 10px;font-size:14px}
+.acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.pos{color:var(--g)}.neg{color:var(--r)}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:6}
+nav button{flex:1;background:none;border-radius:0;padding:14px 2px;color:var(--mut);font-size:13px}nav button.on{color:var(--g)}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal .h{font-size:12px;color:var(--mut);text-align:center}
+.d{min-height:62px;background:#0b0e13;border-radius:10px;padding:4px;font-size:11px;cursor:pointer;border:1px solid transparent}
+.d.has{border-color:var(--line);background:#121820}.d.today{border-color:var(--b)}.d .n{font-weight:700;font-size:13px}
+.d .v{font-weight:700;font-size:11px}
+.modal{position:fixed;inset:0;background:#000a;display:none;align-items:flex-end;z-index:10}.modal.on{display:flex}
+.sheet{background:var(--card);width:100%;max-width:560px;margin:auto auto 0;border-radius:20px 20px 0 0;padding:18px;max-height:88vh;overflow:auto}
+.sheet input,.sheet select{margin-top:6px}
+h2{margin:4px 0 12px;font-size:20px}h3{margin:6px 0;font-size:16px}
+.hide{display:none}
+a{color:var(--b)}
+.banner{border-color:#1f7a3a;background:#102216}
+.warn{border-color:var(--a)}
+.fare{font-size:32px;font-weight:800;text-align:center;color:var(--g)}
+.route{font-weight:650;font-size:15px;margin-top:2px;word-break:break-word}
+.jobmeta{color:var(--mut);font-size:13px;line-height:1.35}
+.job.off{opacity:.55}
+.bad{border-color:var(--r)!important}
+.hist{display:flex;align-items:flex-end;gap:2px;height:96px;margin-top:8px}
+.hist .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;min-width:0}
+.hist .col b{display:block;width:100%;background:var(--g);border-radius:3px 3px 0 0}
+.hist .col span{font-size:9px;color:var(--mut);height:14px;line-height:14px}
+.barline{margin-top:10px}
+.barline .top{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.bar{height:8px;background:#0b0e13;border-radius:99px;overflow:hidden;margin-top:4px}
+.bar i{display:block;height:100%;background:var(--b);border-radius:99px}
+.bar.g i{background:var(--g)}
+.bar.a i{background:var(--a)}
+.call{background:#0b0e13;border-radius:12px;padding:10px;margin-top:8px}
+</style></head><body>
+<header><div class="wallet" id="wallet" onclick="walletOpen()"><small>👛 Cüzdan</small><b id="wv">₺0</b></div><div class="mut" id="hdate"></div></header>
+<main>
+<section id="pgDay"></section>
+<section id="pgIns" class="hide"></section>
+<section id="pgCal" class="hide"></section>
+<section id="pgSet" class="hide"></section>
+</main>
+<nav><button id="nDay" class="on" onclick="go('Day')">🚗 Gün</button><button id="nIns" onclick="go('Ins')">📊 Analiz</button><button id="nCal" onclick="go('Cal')">📅 Takvim</button><button id="nSet" onclick="go('Set')">⚙️ Ayarlar</button></nav>
+<div class="modal" id="modal" onclick="if(event.target===this)closeM()"><div class="sheet" id="sheet"></div></div>
+<script>
+// İş: ücret, müşteri inince (İş Bitti) gelire yazılır. Yarım kalan iş bitirilebilir, iptal edilebilir, düzenlenebilir.
+// Eski gelir kayıtları konumsuz "legacy" işe dönüşür; süre ve mesafe hesaplanmaz.
+// Konum kaydı bekletmez. Bölge adı çevrimiçiyken Nominatim ile çözülür (en fazla ~1 istek/sn, önbellek, OSM atfı).
+const K='tagDetay_v1';
+const GK='tagDetay_geo_v1';
+const LOC_MS=12000;
+const GEO_GAP=1100;
+const IDLE_CAP=3*60*60*1000;
+let S=load(), tab='in', calM=new Date(); calM.setDate(1);
+let modalMode=null, modalDay=null;
+let ins={city:'',from:'',to:'',preset:'all'};
+const geoQ=[];
+const geoQueued=new Set();
+const geoTries=new Map();
+const locToken=new Map();
+let geoBusy=false;
+
+function load(){
+  let raw;
+  try{raw=JSON.parse(localStorage.getItem(K)||'{}')}catch(e){raw={}}
+  const data=Object.assign({days:[],open:null,adj:[]},raw||{});
+  if(!Array.isArray(data.days))data.days=[];
+  if(!Array.isArray(data.adj))data.adj=[];
+  let changed=false;
+  const touch=d=>{
+    if(!d)return;
+    if(!Array.isArray(d.entries)){d.entries=[];changed=true}
+    d.entries.forEach(e=>{
+      if(!e||e.t!=='in'||e.kind)return;
+      e.kind='job';
+      e.status='done';
+      e.legacy=true;
+      if(!e.startTs)e.startTs=e.ts;
+      changed=true;
+    });
+  };
+  data.days.forEach(touch);
+  touch(data.open);
+  if(changed){try{localStorage.setItem(K,JSON.stringify(data))}catch(e){}}
+  return data;
+}
+function save(){localStorage.setItem(K,JSON.stringify(S))}
+function geoCache(){try{const o=JSON.parse(localStorage.getItem(GK)||'{}');return o&&typeof o==='object'?o:{}}catch(e){return {}}}
+function saveGeoCache(obj){
+  const keys=Object.keys(obj);
+  if(keys.length>500){
+    keys.sort((a,b)=>(obj[a].t||0)-(obj[b].t||0));
+    keys.slice(0,keys.length-400).forEach(k=>delete obj[k]);
+  }
+  try{localStorage.setItem(GK,JSON.stringify(obj))}catch(e){}
+}
+const nf=new Intl.NumberFormat('tr-TR',{minimumFractionDigits:0,maximumFractionDigits:2});
+const kmFmt=new Intl.NumberFormat('tr-TR',{minimumFractionDigits:1,maximumFractionDigits:1});
+const tl=v=>(v<0?'-':'')+'₺'+nf.format(Math.abs(Math.round(v*100)/100));
+const kmf=v=>kmFmt.format(v);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const tm=t=>new Date(t).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
+const dt=t=>new Date(t).toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric',weekday:'long'});
+const pn=v=>{v=String(v).replace(/\s/g,'');if(v.includes(','))v=v.replace(/\./g,'').replace(',','.');const n=parseFloat(v);return n};
+const dur=ms=>{const m=Math.floor(ms/60000);return Math.floor(m/60)+' sa '+String(m%60).padStart(2,'0')+' dk'};
+function durShort(ms){
+  const m=Math.round(ms/60000);
+  if(m<=0)return '';
+  if(m<60)return m+' dk';
+  const h=Math.floor(m/60),rm=m%60;
+  return h+' sa'+(rm?' '+rm+' dk':'');
+}
+const dkey=t=>{const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const hm=t=>{const x=new Date(t);return String(x.getHours()).padStart(2,'0')+':'+String(x.getMinutes()).padStart(2,'0')};
+function norm(s){return String(s||'').trim().toLocaleLowerCase('tr-TR').replace(/ı/g,'i')}
+function nid(p){return p+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function eachDay(fn){S.days.forEach(fn);if(S.open)fn(S.open)}
+function findEntry(id){
+  let found=null;
+  eachDay(d=>{
+    if(found)return;
+    const e=(d.entries||[]).find(x=>x.id===id);
+    if(e)found={day:d,entry:e};
+  });
+  return found;
+}
+function dayOf(did){return did?S.days.find(x=>x.id===did):S.open}
+function counts(e){return !!(e&&e.t==='in'&&e.status!=='cancelled'&&e.status!=='open')}
+function activeJob(){
+  if(!S.open)return null;
+  return S.open.entries.find(e=>e.kind==='job'&&e.status==='open')||null;
+}
+function calc(d){
+  const end=d.end||Date.now();
+  const incomes=(d.entries||[]).filter(counts);
+  const inc=incomes.reduce((a,e)=>a+e.v,0);
+  const exE=(d.entries||[]).filter(e=>e.t==='ex').reduce((a,e)=>a+e.v,0);
+  const fuel=d.fuel||0,ex=exE+fuel,net=inc-ex;
+  const ms=Math.max(0,end-d.start-(d.brk||0));
+  const h=ms/3600000;
+  return {inc,ex,fuel,net,ms,h,ph:h>0?net/h:0,pk:d.km>0?net/d.km:0,rides:incomes.length};
+}
+function haversine(lat1,lon1,lat2,lon2){
+  const R=6371,p=Math.PI/180;
+  const dLat=(lat2-lat1)*p,dLon=(lon2-lon1)*p;
+  const s=Math.sin(dLat/2)**2+Math.cos(lat1*p)*Math.cos(lat2*p)*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.min(1,Math.sqrt(s)));
+}
+function jobDuration(e){
+  if(!e||e.legacy||!e.startTs||!e.endTs)return null;
+  const ms=e.endTs-e.startTs;
+  return ms>0?ms:null;
+}
+function jobDistance(e){
+  const a=e&&e.pickup,b=e&&e.dropoff;
+  if(!a||!b||a.lat==null||b.lat==null||a.lng==null||b.lng==null)return null;
+  const km=haversine(+a.lat,+a.lng,+b.lat,+b.lng);
+  return isFinite(km)?km:null;
+}
+function cleanName(s){return String(s||'').replace(/\s+(Mahallesi|Mah\.|Köyü)$/i,'').trim()}
+function placeLabel(loc){
+  if(!loc)return '';
+  const area=String(loc.area||'').trim(),city=String(loc.city||'').trim();
+  if(area&&city)return area+' · '+city;
+  return area||city||'';
+}
+function hasPlace(loc){return !!placeLabel(loc)}
+function areaText(loc){
+  const nice=placeLabel(loc);
+  if(nice)return nice;
+  if(!loc)return 'Konum yok';
+  if(loc.status==='pending')return 'Konum alınıyor…';
+  if(loc.status==='denied')return 'Konum izni yok';
+  if(loc.status==='timeout')return 'Konum alınamadı';
+  if(loc.status==='unavailable')return 'Konum yok';
+  if(loc.lat!=null)return navigator.onLine?'Bölge aranıyor…':'Çevrimdışı · bölge sonra';
+  return 'Konum yok';
+}
+function routeText(e){
+  if(!e||e.kind!=='job')return '';
+  const bare=!(e.pickup&&(e.pickup.lat!=null||e.pickup.area||e.pickup.city))&&!(e.dropoff&&(e.dropoff.lat!=null||e.dropoff.area||e.dropoff.city));
+  if(e.legacy&&bare)return 'Eski kayıt · konum yok';
+  const a=areaText(e.pickup);
+  if(e.status==='open')return a+' → bırakış bekleniyor';
+  return a+' → '+areaText(e.dropoff);
+}
+function timeText(e){
+  const s=e.startTs||e.ts;
+  if(e.kind==='job'&&e.status==='open')return tm(s)+' → devam';
+  if(e.kind==='job'&&e.endTs&&!e.legacy){
+    const ms=jobDuration(e);
+    return tm(s)+' → '+tm(e.endTs)+(ms&&durShort(ms)?' · '+durShort(ms):'');
+  }
+  return tm(s);
+}
+function metricsText(e){
+  if(!e||e.kind!=='job'||e.legacy)return '';
+  const parts=[];
+  const km=jobDistance(e),ms=jobDuration(e);
+  if(km!=null)parts.push('~'+kmf(km)+' km kuş uçuşu');
+  if(km!=null&&km>=0.05)parts.push(tl(e.v/km)+'/km');
+  if(ms!=null&&ms>=60000)parts.push(tl(e.v/(ms/60000))+'/dk');
+  return parts.join(' · ');
+}
+function walletTotal(){let w=S.days.reduce((a,d)=>a+calc(d).net,0);if(S.open)w+=calc(S.open).net;return w+S.adj.reduce((a,x)=>a+x.v,0)}
+function go(p){['Day','Ins','Cal','Set'].forEach(x=>{document.getElementById('pg'+x).classList.toggle('hide',x!==p);document.getElementById('n'+x).classList.toggle('on',x===p)});render()}
+function render(){
+  const w=walletTotal();
+  const wv=document.getElementById('wv');
+  wv.textContent=tl(w);
+  wv.className=w<0?'neg':'';
+  document.getElementById('hdate').textContent=new Date().toLocaleDateString('tr-TR',{day:'numeric',month:'short',weekday:'short'});
+  rDay();rIns();rCal();rSet();
+}
+function renderSoft(){
+  const mode=modalMode,day=modalDay,y=window.scrollY;
+  const ids=['amt','note','km','fuel'];
+  const vals={};
+  const ae=document.activeElement;
+  const focusId=ae&&ae.id&&mode!=='form'&&mode!=='wallet'&&mode!=='day'?ae.id:'';
+  ids.forEach(id=>{const n=document.getElementById(id);if(n&&!(n.closest&&n.closest('#sheet')))vals[id]=n.value});
+  render();
+  ids.forEach(id=>{const n=document.getElementById(id);if(n&&vals[id]!=null)n.value=vals[id]});
+  if(focusId){const n=document.getElementById(focusId);if(n)n.focus()}
+  if(mode==='day'&&day)showDay(day);
+  window.scrollTo(0,y);
+}
+function pendingJobs(){
+  const out=[];
+  S.days.forEach(d=>(d.entries||[]).forEach(e=>{if(e.kind==='job'&&e.status==='open')out.push({d,e})}));
+  return out;
+}
+function currentIdle(d){
+  if(!d||activeJob())return null;
+  const seq=(d.entries||[]).filter(e=>e.t==='in'&&e.status!=='cancelled'&&e.status!=='open')
+    .slice().sort((a,b)=>(a.startTs||a.ts)-(b.startTs||b.ts));
+  if(!seq.length)return null;
+  const last=seq[seq.length-1];
+  const end=(last.kind==='job'&&last.endTs&&!last.legacy)?last.endTs:(last.startTs||last.ts);
+  const ms=Date.now()-end;
+  if(ms<60000)return null;
+  return {ms,where:placeLabel(last.dropoff)};
+}
+function idleNowText(){
+  if(!S.open)return '';
+  const info=currentIdle(S.open);
+  if(!info)return '';
+  return 'Son bırakıştan beri '+durShort(info.ms)+(info.where?' · '+info.where:'');
+}
+function rDay(){
+  const el=document.getElementById('pgDay');
+  const pend=pendingJobs();
+  const warn=pend.length?`<div class="card warn"><b>Bitmemiş iş</b><p class="mut">${pend.length} iş yarım kalmış. Bitirebilir veya iptal edebilirsin.</p>${pend.map(({d,e})=>`<button style="width:100%;margin-top:8px" onclick="showDay('${d.id}')">${esc(new Date(d.start).toLocaleDateString('tr-TR',{day:'numeric',month:'short'}))} · ${tl(e.v)} · ${tm(e.startTs||e.ts)}</button>`).join('')}</div>`:'';
+  if(!S.open){
+    const last=S.days[S.days.length-1];
+    el.innerHTML=warn+`<div class="card c"><p class="mut">Şu an açık gün yok</p><button class="big g" id="btnOpen" onclick="openDay()">▶ Günü Aç</button></div>`+(last?summary(last,'Son gün')+dayBtns(last.id):'');
+    return;
+  }
+  const d=S.open,c=calc(d),job=activeJob();
+  el.innerHTML=warn+`<div class="card"><div class="mut c">Açılış: ${tm(d.start)} · ${new Date(d.start).toLocaleDateString('tr-TR')}</div><div class="timer" id="timer">${clock(c.ms)}</div>
+    <div class="mut c" id="idleNow">${esc(idleNowText())}</div>
+    <div class="stats"><div><span class="mut">Gelir</span><b class="pos" id="statInc">${tl(c.inc)}</b></div><div><span class="mut">Gider</span><b class="neg">${tl(c.ex)}</b></div>
+    <div><span class="mut">Net</span><b>${tl(c.net)}</b></div><div><span class="mut">Müşteri</span><b id="statRides">${c.rides}</b></div></div></div>
+    ${job?jobBanner(job):''}
+    ${formCard(job)}
+    <div class="card" id="jobList"><h3>Bugünün kayıtları (${d.entries.length})</h3>${d.entries.length?d.entries.slice().reverse().map(e=>entryRow(e,'')).join(''):'<p class="mut">Henüz kayıt yok</p>'}</div>
+    <div class="card"><h3>Günü Kapat</h3><div class="row"><div><span class="mut">Kaç km?</span><input id="km" inputmode="decimal" placeholder="km" value="${d.km?String(d.km).replace('.',','):''}"></div><div><span class="mut">Yakıt ₺</span><input id="fuel" inputmode="decimal" placeholder="₺" value="${d.fuel?String(d.fuel).replace('.',','):''}"></div></div>
+    <button class="big a" style="margin-top:10px" id="btnClose" onclick="closeDay()">■ Günü Kapat</button></div>`;
+}
+function jobBanner(e){
+  return `<div class="card banner" id="openJob"><div class="mut c">İş devam ediyor · ${tm(e.startTs)} başladı</div>
+    <div class="fare">${tl(e.v)}</div>
+    <div class="timer" id="jobTimer" style="font-size:28px">${durShort(Date.now()-e.startTs)||'0 dk'}</div>
+    <div class="c route" id="openRoute">${esc(routeText(e))}</div>
+    ${e.note?`<div class="mut c">${esc(e.note)}</div>`:''}
+    <p class="mut c">Ücret, müşteri inince gelire yazılır.</p>
+    <button class="big g" id="btnFinish" onclick="finishJob('${e.id}','')">İş Bitti</button>
+    <div class="row" style="margin-top:8px"><button id="btnCancel" onclick="cancelJob('${e.id}','')">İptal</button><button id="btnEditOpen" onclick="editJob('${e.id}','')">Düzenle</button></div></div>`;
+}
+function formCard(job){
+  const tabs=`<div class="tabs"><button class="${tab==='in'?'on':''}" onclick="tab='in';rDay()">+ İş</button><button class="${tab==='ex'?'on':''}" onclick="tab='ex';rDay()">− Gider</button></div>`;
+  if(tab==='ex'){
+    return `<div class="card">${tabs}<input id="amt" class="num" inputmode="decimal" autocomplete="off" placeholder="₺ tutar" oninput="this.classList.remove('bad')" onkeydown="if(event.key==='Enter')addExpense()">
+      <input id="note" placeholder="Ne gideri? (yemek, yıkama…)" style="margin:8px 0;font-size:16px" onkeydown="if(event.key==='Enter')addExpense()">
+      <button class="big r" id="btnAdd" onclick="addExpense()">Gider Ekle</button></div>`;
+  }
+  if(job){
+    return `<div class="card">${tabs}<p class="mut">Açık iş bitmeden yenisi başlamaz. Bahşiş veya düzeltme için düz gelir kullan.</p>
+      <input id="amt" class="num" inputmode="decimal" autocomplete="off" placeholder="₺ tutar" oninput="this.classList.remove('bad')" onkeydown="if(event.key==='Enter')addPlain()">
+      <input id="note" placeholder="Not (isteğe bağlı)" style="margin:8px 0;font-size:16px" onkeydown="if(event.key==='Enter')addPlain()">
+      <button class="big" id="btnPlain" onclick="addPlain()">Düz gelir ekle</button></div>`;
+  }
+  return `<div class="card">${tabs}<input id="amt" class="num" inputmode="decimal" autocomplete="off" placeholder="₺ tutar" oninput="this.classList.remove('bad')" onkeydown="if(event.key==='Enter')startJob()">
+    <input id="note" placeholder="Not (isteğe bağlı)" style="margin:8px 0;font-size:16px" onkeydown="if(event.key==='Enter')startJob()">
+    <button class="big g" id="btnStart" onclick="startJob()">İş Başladı</button>
+    <p class="mut c">Alış konumu kendiliğinden yazılır. Konum izni ilk işte sorulur; reddedersen kayıt yine de durur.</p>
+    <button id="btnPlain" style="width:100%;margin-top:8px" onclick="addPlain()">Düz gelir (başlangıç/bitiş yok)</button></div>`;
+}
+function entryRow(e,did){
+  if(e.t==='ex'){
+    return `<div class="e" data-eid="${e.id}"><span class="mut">${tm(e.ts)}</span><span style="flex:1">${esc(e.note)||'Gider'}</span><span class="amt neg">−${tl(e.v)}</span><button class="sm" onclick="editE('${e.id}','${did}')">✎</button><button class="sm" onclick="delE('${e.id}','${did}')">🗑</button></div>`;
+  }
+  const cancelled=e.status==='cancelled';
+  const metrics=metricsText(e);
+  let amt;
+  if(cancelled)amt=`<span class="amt mut"><s>${tl(e.v)}</s></span>`;
+  else if(e.status==='open')amt=`<span class="amt" style="color:var(--a)">${tl(e.v)}<small class="mut" style="display:block;font-weight:500">açık</small></span>`;
+  else amt=`<span class="amt pos">+${tl(e.v)}</span>`;
+  const q=`'${e.id}','${did}'`;
+  const btns=[];
+  if(cancelled){
+    btns.push(`<button class="sm" onclick="restoreJob(${q})">Geri al</button>`);
+  }else{
+    if(e.kind==='job'&&e.status==='open'){
+      if(did)btns.push(`<button class="sm g" onclick="finishJob(${q})">Bitir</button>`);
+      btns.push(`<button class="sm" onclick="cancelJob(${q})">İptal</button>`);
+    }
+    if(e.kind==='job')btns.push(`<button class="sm" onclick="fixArea(${q})">Bölge</button>`);
+    btns.push(`<button class="sm" onclick="editE(${q})">✎</button>`);
+  }
+  btns.push(`<button class="sm" onclick="delE(${q})">🗑</button>`);
+  const kind=e.kind==='plain'?' · düz gelir':'';
+  const flag=cancelled?' · iptal':'';
+  return `<div class="e job ${cancelled?'off':''}" data-eid="${e.id}" data-status="${esc(e.status||'')}"><div class="body"><div>${esc(timeText(e))}${kind}${flag}</div>${e.kind==='job'?`<div class="route">${esc(routeText(e))}</div>`:''}${metrics?`<div class="jobmeta metrics">${esc(metrics)}</div>`:''}${e.note?`<div class="jobmeta">${esc(e.note)}</div>`:''}<div class="acts">${btns.join('')}</div></div>${amt}</div>`;
+}
+const clock=ms=>{const s=Math.floor(ms/1000);return String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor(s/60)%60).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
+function openDay(){if(S.open)return alert('Zaten açık bir gün var.');S.open={id:nid('d'),start:Date.now(),entries:[]};save();render()}
+function needAmt(){
+  const a=document.getElementById('amt');
+  const v=pn(a.value);
+  if(!(v>0)){a.classList.add('bad');a.focus();return null}
+  return v;
+}
+function startJob(){
+  if(!S.open)return;
+  if(activeJob())return alert('Önce açık işi bitir veya iptal et.');
+  const v=needAmt();if(v==null)return;
+  const note=(document.getElementById('note').value||'').trim();
+  const ts=Date.now();
+  const e={id:nid('e'),t:'in',kind:'job',status:'open',legacy:false,v,note,ts,startTs:ts,endTs:null,pickup:{status:'pending'},dropoff:null};
+  S.open.entries.push(e);
+  save();
+  captureLoc(e.id,'pickup');
+  render();
+}
+function addPlain(){
+  if(!S.open)return;
+  const v=needAmt();if(v==null)return;
+  const note=(document.getElementById('note').value||'').trim();
+  const ts=Date.now();
+  S.open.entries.push({id:nid('e'),t:'in',kind:'plain',status:'done',v,note,ts,startTs:ts});
+  save();render();
+}
+function addExpense(){
+  if(!S.open)return;
+  const v=needAmt();if(v==null)return;
+  const note=(document.getElementById('note').value||'').trim();
+  S.open.entries.push({id:nid('e'),t:'ex',v,note,ts:Date.now()});
+  save();render();
+  const a=document.getElementById('amt');if(a)a.focus();
+}
+function finishJob(id,did,withLoc){
+  const d=dayOf(did);if(!d)return;
+  const e=d.entries.find(x=>x.id===id);if(!e||e.status!=='open')return;
+  e.status='done';
+  e.endTs=Date.now();
+  e.legacy=false;
+  if(withLoc===false){
+    save();
+    after(did);
+    return;
+  }
+  const prev=e.dropoff||{};
+  if(prev.manual)e.dropoff={status:'pending',area:prev.area||'',city:prev.city||'',district:prev.district||'',neighbourhood:prev.neighbourhood||'',manual:true};
+  else e.dropoff={status:'pending'};
+  save();
+  captureLoc(id,'dropoff');
+  after(did);
+}
+function cancelJob(id,did){
+  if(!confirm('İş iptal edilsin mi? Gelire yazılmaz.'))return;
+  const d=dayOf(did);if(!d)return;
+  const e=d.entries.find(x=>x.id===id);if(!e)return;
+  e.status='cancelled';
+  after(did);
+}
+function restoreJob(id,did){
+  const d=dayOf(did);if(!d)return;
+  const e=d.entries.find(x=>x.id===id);if(!e)return;
+  if(!e.endTs){
+    const other=(d.entries||[]).some(x=>x!==e&&x.kind==='job'&&x.status==='open');
+    if(other){alert('Bu günde zaten açık bir iş var.');return}
+    e.status='open';
+  }else e.status='done';
+  after(did);
+}
+function after(did){save();render();if(did)showDay(did)}
+function delE(id,did){const d=dayOf(did);if(!d||!confirm('Kayıt silinsin mi?'))return;d.entries=d.entries.filter(e=>e.id!==id);after(did)}
+function editE(id,did){
+  const d=dayOf(did);if(!d)return;
+  const e=d.entries.find(x=>x.id===id);if(!e)return;
+  if(e.t==='in'&&e.kind==='job')return editJob(id,did);
+  const v=prompt('Yeni tutar (₺):',String(e.v).replace('.',','));if(v===null)return;
+  const n=pn(v);if(!(n>0))return alert('Geçersiz tutar');
+  const no=prompt('Not:',e.note||'');
+  e.v=n;if(no!==null)e.note=no.trim();
+  after(did);
+}
+function editJob(id,did){
+  const d=dayOf(did);if(!d)return;
+  const e=d.entries.find(x=>x.id===id);if(!e)return;
+  modalMode='form';
+  M(`<h2>İşi düzenle</h2>
+    <span class="mut">Tutar ₺</span>
+    <input id="ev" class="num" inputmode="decimal" value="${esc(String(e.v).replace('.',','))}">
+    <span class="mut">Not</span>
+    <input id="en" value="${esc(e.note||'')}">
+    <div class="row"><div><span class="mut">Başlangıç</span><input id="es" value="${hm(e.startTs||e.ts)}" placeholder="SS:DD"></div><div><span class="mut">Bitiş</span><input id="ee" value="${e.endTs?hm(e.endTs):''}" placeholder="SS:DD"></div></div>
+    <p class="mut">Bitiş, başlangıçtan küçükse ertesi güne sayılır. Bitişi yazıp kaydedersen açık iş tamamlanır (konum alınmaz).</p>
+    <button class="big g" id="btnSaveJob" onclick="saveJobEdit('${id}','${did}')">Kaydet</button>
+    <button style="width:100%;margin-top:8px" onclick="${did?`showDay('${did}')`:'closeM()'}">Vazgeç</button>`);
+}
+function saveJobEdit(id,did){
+  const d=dayOf(did);if(!d)return;
+  const e=d.entries.find(x=>x.id===id);if(!e)return;
+  const n=pn(document.getElementById('ev').value);
+  if(!(n>0))return alert('Geçersiz tutar');
+  const base=e.startTs||e.ts;
+  const ns=atHM(base,document.getElementById('es').value);
+  if(ns===null)return alert('Başlangıç saati SS:DD olmalı, örn. 08:30');
+  e.v=n;
+  e.note=document.getElementById('en').value.trim();
+  e.startTs=ns;
+  e.ts=ns;
+  const ee=document.getElementById('ee').value.trim();
+  if(ee){
+    let ne=atHM(ns,ee);
+    if(ne===null)return alert('Bitiş saati SS:DD olmalı, örn. 18:40');
+    if(ne<=ns)ne+=86400000;
+    e.endTs=ne;
+    e.legacy=false;
+    if(e.status==='open')e.status='done';
+  }
+  closeM();
+  after(did);
+}
+function fixArea(id,did){
+  const f=findEntry(id);if(!f)return;
+  const e=f.entry;
+  const p=e.pickup||{},dp=e.dropoff||{};
+  modalMode='form';
+  const coord=loc=>loc&&loc.lat!=null?`<div class="mut">${Number(loc.lat).toFixed(5)}, ${Number(loc.lng).toFixed(5)}${loc.acc?` · ±${Math.round(loc.acc)} m`:''}</div>`:`<div class="mut">Koordinat yok</div>`;
+  M(`<h2>Bölgeyi düzelt</h2>
+    <h3>Alış</h3>${coord(e.pickup)}
+    <input id="pa" data-orig="${esc(p.area||'')}" value="${esc(p.area||'')}" placeholder="Mahalle, ilçe">
+    <input id="pc" data-orig="${esc(p.city||'')}" value="${esc(p.city||'')}" placeholder="Şehir">
+    <button style="width:100%;margin-top:8px" onclick="recapture('${id}','${did}','pickup')">Alış konumunu şimdi al</button>
+    <h3>Bırakış</h3>${coord(e.dropoff)}
+    <input id="da" data-orig="${esc(dp.area||'')}" value="${esc(dp.area||'')}" placeholder="Mahalle, ilçe">
+    <input id="dc" data-orig="${esc(dp.city||'')}" value="${esc(dp.city||'')}" placeholder="Şehir">
+    <button style="width:100%;margin-top:8px" onclick="recapture('${id}','${did}','dropoff')">Bırakış konumunu şimdi al</button>
+    <button class="big g" style="margin-top:8px" id="btnSaveArea" onclick="saveArea('${id}','${did}')">Kaydet</button>
+    <button style="width:100%;margin-top:8px" onclick="${did?`showDay('${did}')`:'closeM()'}">Vazgeç</button>`);
+}
+function saveArea(id,did){
+  const f=findEntry(id);if(!f)return;
+  const e=f.entry;
+  [['pickup','pa','pc'],['dropoff','da','dc']].forEach(([slot,ai,ci])=>{
+    const areaEl=document.getElementById(ai),cityEl=document.getElementById(ci);
+    const area=areaEl.value.trim(),city=cityEl.value.trim();
+    if(area===(areaEl.dataset.orig||'')&&city===(cityEl.dataset.orig||''))return;
+    const prev=e[slot]||{};
+    e[slot]=Object.assign({},prev,{area,city,manual:true});
+  });
+  closeM();
+  after(did);
+}
+function recapture(id,did,slot){
+  const f=findEntry(id);if(!f)return;
+  const prev=f.entry[slot]||{};
+  if(prev.manual)f.entry[slot]={status:'pending',area:prev.area||'',city:prev.city||'',district:prev.district||'',neighbourhood:prev.neighbourhood||'',manual:true};
+  else f.entry[slot]={status:'pending'};
+  save();
+  captureLoc(id,slot);
+  closeM();
+  if(did)showDay(did);else render();
+}
+function closeDay(){
+  const km=pn(document.getElementById('km').value||0)||0,fuel=pn(document.getElementById('fuel').value||0)||0;
+  let msg='Gün kapatılsın mı?';
+  if(activeJob())msg+=' Açık işin ücreti henüz dahil değil. Sonra bitirebilir veya iptal edebilirsin.';
+  if(!confirm(msg))return;
+  const d=S.open;d.end=Date.now();d.km=km;d.fuel=fuel;S.days.push(d);S.open=null;save();render();showDay(d.id);
+}
+function dayTripBits(d){
+  let km=0,ms=0,nKm=0,nMs=0;
+  (d.entries||[]).forEach(e=>{
+    if(!counts(e))return;
+    const k=jobDistance(e),m=jobDuration(e);
+    if(k!=null){km+=k;nKm++}
+    if(m!=null){ms+=m;nMs++}
+  });
+  return {km,ms,nKm,nMs};
+}
+function summary(d,title){
+  const c=calc(d),t=dayTripBits(d);
+  const extra=(t.nKm||t.nMs)?`<div><span class="mut">Kuş uçuşu</span><b>${t.nKm?kmf(t.km)+' km':'—'}</b></div><div><span class="mut">İş süresi</span><b>${t.nMs?dur(t.ms):'—'}</b></div>`:'';
+  return `<div class="card"><h3>${title||'Gün özeti'}</h3><div class="mut">${dt(d.start)}<br>${tm(d.start)} → ${d.end?tm(d.end):'…'} (${dur(c.ms)})</div><br>
+    <div class="stats"><div><span class="mut">Gelir</span><b class="pos">${tl(c.inc)}</b></div><div><span class="mut">Gider (yakıt dahil)</span><b class="neg">${tl(c.ex)}</b></div>
+    <div><span class="mut">Net</span><b class="${c.net<0?'neg':'pos'}">${tl(c.net)}</b></div><div><span class="mut">Süre</span><b>${dur(c.ms)}</b></div>
+    <div><span class="mut">Saatlik net</span><b>${tl(c.ph)}</b></div><div><span class="mut">Km başı net</span><b>${d.km?tl(c.pk):'—'}</b></div>
+    <div><span class="mut">Müşteri sayısı</span><b>${c.rides}</b></div><div><span class="mut">Müşteri başı ort.</span><b>${c.rides?tl(c.inc/c.rides):'—'}</b></div><div><span class="mut">Saatte müşteri</span><b>${c.h>0?nf.format(Math.round(c.rides/c.h*10)/10):'—'}</b></div><div><span class="mut">Km / Yakıt</span><b>${nf.format(d.km||0)} km · ${tl(c.fuel)}</b></div>${extra}</div></div>`;
+}
+function showDay(id){
+  const d=S.days.find(x=>x.id===id);if(!d)return;
+  modalMode='day';modalDay=id;
+  const banners=d.entries.filter(e=>e.kind==='job'&&e.status==='open').map(e=>`<div class="card banner"><b>Açık iş · ${tl(e.v)}</b><div class="route">${esc(routeText(e))}</div><p class="mut">Bitirirsen bırakış konumu şu anki yerin olur. Yanlışsa bölgeyi elle düzeltebilirsin.</p><button class="big g" onclick="finishJob('${e.id}','${d.id}')">İş Bitti</button><button class="big" style="margin-top:8px" onclick="finishJob('${e.id}','${d.id}',false)">Konumsuz bitir</button><button class="r big" style="margin-top:8px" onclick="cancelJob('${e.id}','${d.id}')">İptal</button></div>`).join('');
+  M(summary(d,'Gün özeti')+dayBtns(d.id)+banners+`<div class="card"><h3>Kayıtlar (${d.entries.length})</h3>${d.entries.map(e=>entryRow(e,d.id)).join('')||'<p class="mut">Kayıt yok</p>'}
+    <div class="row" style="margin-top:8px"><button class="g" onclick="addPastJob('${d.id}')">+ İş</button><button onclick="addC('${d.id}','in')">+ Düz gelir</button><button class="r" onclick="addC('${d.id}','ex')">− Gider</button></div></div>
+    <div class="row"><button class="r" onclick="delDay('${d.id}')">Günü Sil</button><button onclick="closeM()">Kapat</button></div>`);
+}
+function dayBtns(id){return `<div class="row" style="margin-bottom:12px"><button class="g" onclick="reopen('${id}')">▶ Günü Tekrar Aç</button><button onclick="editDay('${id}')">✎ Günü Düzenle</button></div>`}
+function reopen(id){
+  if(S.open)return alert('Önce açık olan günü kapat.');
+  const d=S.days.find(x=>x.id===id);if(!d)return;
+  if(!confirm('Bu gün tekrar açılsın mı? Süre kaldığı yerden devam eder.'))return;
+  d.brk=(d.brk||0)+Math.max(0,Date.now()-d.end);delete d.end;
+  S.days=S.days.filter(x=>x.id!==id);S.open=d;save();closeM();go('Day');
+}
+function addC(did,t){
+  const d=dayOf(did);if(!d)return;
+  const v=prompt((t==='in'?'Düz gelir':'Gider')+' tutarı (₺):');if(v===null)return;
+  const n=pn(v);if(!(n>0))return alert('Geçersiz tutar');
+  const no=prompt('Not (isteğe bağlı):','');
+  const ts=d.end||Date.now();
+  const e={id:nid('e'),t,v:n,note:(no||'').trim(),ts};
+  if(t==='in'){e.kind='plain';e.status='done';e.startTs=ts}
+  d.entries.push(e);
+  d.entries.sort((a,b)=>(a.ts||0)-(b.ts||0));
+  after(did);
+}
+function addPastJob(did){
+  modalMode='form';
+  M(`<h2>Geçmiş iş</h2><p class="mut">O anki konum alınmaz. Bölgeyi biliyorsan yaz.</p>
+    <span class="mut">Tutar ₺</span><input id="ev" class="num" inputmode="decimal" placeholder="₺">
+    <span class="mut">Not</span><input id="en" placeholder="Not">
+    <div class="row"><div><span class="mut">Başlangıç</span><input id="es" placeholder="08:30"></div><div><span class="mut">Bitiş</span><input id="ee" placeholder="08:50"></div></div>
+    <span class="mut">Alış bölgesi</span><input id="pa" placeholder="Mahalle, ilçe"><input id="pc" placeholder="Şehir">
+    <span class="mut">Bırakış bölgesi</span><input id="da" placeholder="Mahalle, ilçe"><input id="dc" placeholder="Şehir">
+    <button class="big g" id="btnSavePast" onclick="savePastJob('${did}')">Kaydet</button>
+    <button style="width:100%;margin-top:8px" onclick="showDay('${did}')">Vazgeç</button>`);
+}
+function savePastJob(did){
+  const d=dayOf(did);if(!d)return;
+  const n=pn(document.getElementById('ev').value);
+  if(!(n>0))return alert('Geçersiz tutar');
+  const ns=atHM(d.start,document.getElementById('es').value);
+  let ne=atHM(d.start,document.getElementById('ee').value);
+  if(ns===null||ne===null)return alert('Saat SS:DD olmalı, örn. 08:30');
+  if(ne<=ns)ne+=86400000;
+  const pa=document.getElementById('pa').value.trim(),pc=document.getElementById('pc').value.trim();
+  const da=document.getElementById('da').value.trim(),dc=document.getElementById('dc').value.trim();
+  d.entries.push({
+    id:nid('e'),t:'in',kind:'job',status:'done',legacy:false,v:n,
+    note:document.getElementById('en').value.trim(),ts:ns,startTs:ns,endTs:ne,
+    pickup:(pa||pc)?{area:pa,city:pc,manual:true}:null,
+    dropoff:(da||dc)?{area:da,city:dc,manual:true}:null
+  });
+  d.entries.sort((a,b)=>(a.ts||0)-(b.ts||0));
+  after(did);
+}
+function atHM(base,v){
+  const m=String(v).trim().match(/^(\d{1,2})[:.](\d{2})$/);
+  if(!m||+m[1]>23||+m[2]>59)return null;
+  const x=new Date(base);x.setHours(+m[1],+m[2],0,0);return x.getTime();
+}
+function editDay(id){
+  const d=S.days.find(x=>x.id===id);if(!d)return;
+  const km=prompt('Kaç km?',String(d.km||0).replace('.',','));if(km===null)return;
+  const fu=prompt('Yakıt ₺:',String(d.fuel||0).replace('.',','));if(fu===null)return;
+  const st=prompt('Başlangıç saati (SS:DD):',hm(d.start));if(st===null)return;
+  const en=prompt('Bitiş saati (SS:DD):',hm(d.end));if(en===null)return;
+  const k=pn(km||0),f=pn(fu||0);
+  if(isNaN(k)||isNaN(f)||k<0||f<0)return alert('Geçersiz km veya yakıt');
+  const ns=atHM(d.start,st);let ne=atHM(d.start,en);
+  if(ns===null||ne===null)return alert('Saat SS:DD şeklinde olmalı, örn. 08:30');
+  if(ne<=ns)ne+=86400000;
+  const tc=st!==hm(d.start)||en!==hm(d.end);
+  d.km=k;d.fuel=f;
+  if(tc){d.start=ns;d.end=ne;d.brk=0}
+  after(id);
+}
+function delDay(id){if(!confirm('Bu gün tamamen silinsin mi?'))return;S.days=S.days.filter(x=>x.id!==id);save();closeM();render()}
+function rCal(){
+  const el=document.getElementById('pgCal');
+  const y=calM.getFullYear(),m=calM.getMonth();
+  const days=S.days.filter(d=>{const s=new Date(d.start);return s.getFullYear()===y&&s.getMonth()===m});
+  let net=0,h=0;days.forEach(d=>{const c=calc(d);net+=c.net;h+=c.h});
+  const by={};days.forEach(d=>(by[dkey(d.start)]=by[dkey(d.start)]||[]).push(d));
+  const first=(new Date(y,m,1).getDay()+6)%7,n=new Date(y,m+1,0).getDate(),tk=dkey(Date.now());
+  let g=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'].map(x=>`<div class="h">${x}</div>`).join('')+'<div></div>'.repeat(first);
+  for(let i=1;i<=n;i++){
+    const k=dkey(new Date(y,m,i));const L=by[k]||[];let inner='';
+    if(L.length){let dn=0,dh=0;L.forEach(d=>{const c=calc(d);dn+=c.net;dh+=c.h});inner=`<div class="v ${dn<0?'neg':'pos'}">${tl(dn)}</div><div class="mut" style="font-size:10px">${nf.format(Math.round(dh*10)/10)}sa · ${tl(dh?dn/dh:0)}/sa</div>`}
+    g+=`<div class="d ${L.length?'has':''} ${k===tk?'today':''}" onclick="${L.length?`dayList('${k}')`:''}"><div class="n">${i}</div>${inner}</div>`;
+  }
+  el.innerHTML=`<div class="card"><div class="row" style="align-items:center"><button onclick="calM.setMonth(calM.getMonth()-1);rCal()" style="flex:0">◀</button>
+    <h2 class="c" style="flex:1;margin:0">${calM.toLocaleDateString('tr-TR',{month:'long',year:'numeric'})}</h2><button onclick="calM.setMonth(calM.getMonth()+1);rCal()" style="flex:0">▶</button></div><br>
+    <div class="stats" style="grid-template-columns:1fr 1fr 1fr"><div><span class="mut">Ay net</span><b class="${net<0?'neg':'pos'}">${tl(net)}</b></div><div><span class="mut">Saat</span><b>${nf.format(Math.round(h*10)/10)}</b></div><div><span class="mut">Ort. saatlik</span><b>${tl(h?net/h:0)}</b></div></div>
+    <div class="mut c" style="margin-top:6px">${days.length} gün çalışıldı · ${days.reduce((a,d)=>a+calc(d).rides,0)} müşteri</div></div><div class="card cal">${g}</div>`;
+}
+function dayList(k){
+  const L=S.days.filter(d=>dkey(d.start)===k);
+  if(L.length===1)return showDay(L[0].id);
+  M(`<h2>${dt(L[0].start)}</h2>`+L.map(d=>{const c=calc(d);return `<button style="width:100%;margin-bottom:8px;text-align:left" onclick="showDay('${d.id}')">${tm(d.start)}–${d.end?tm(d.end):'…'} · Net ${tl(c.net)} · ${dur(c.ms)}</button>`}).join(''));
+}
+function walletOpen(){
+  modalMode='wallet';modalDay=null;
+  const w=walletTotal();
+  M(`<h2>👛 Cüzdan: ${tl(w)}</h2><p class="mut">Tüm günlerin net toplamı + manuel düzeltmeler. Para çektiysen veya kasayı gerçek nakde eşitlemek istersen buradan gir.</p>
+    <input id="wa" class="num" inputmode="decimal" placeholder="₺ tutar"><input id="wn" placeholder="Not (örn. para çektim)" style="margin:8px 0">
+    <div class="row"><button class="r" id="btnWOut" onclick="adj(-1)">− Para Çektim</button><button class="g" onclick="adj(1)">+ Ekle</button></div>
+    <button style="width:100%;margin-top:8px" onclick="setTo()">Cüzdanı bu tutara eşitle</button>
+    <h3 style="margin-top:16px">Düzeltmeler</h3>${S.adj.slice().reverse().map(a=>`<div class="e"><span class="mut">${new Date(a.ts).toLocaleDateString('tr-TR')} ${tm(a.ts)}</span><span style="flex:1">${esc(a.note)}</span><span class="amt ${a.v<0?'neg':'pos'}">${tl(a.v)}</span><button class="sm" onclick="delAdj('${a.id}')">🗑</button></div>`).join('')||'<p class="mut">Yok</p>'}`);
+}
+function adj(s,force){
+  const v=force!==undefined?force:pn(document.getElementById('wa').value)*s;
+  if(!v&&v!==0||isNaN(v))return;
+  S.adj.push({id:nid('a'),v,note:(document.getElementById('wn').value.trim()||(force!==undefined?'Eşitleme':s<0?'Para çektim':'Ekleme')),ts:Date.now()});
+  save();render();walletOpen();
+}
+function setTo(){const t=pn(document.getElementById('wa').value);if(isNaN(t))return;adj(0,t-walletTotal())}
+function delAdj(id){S.adj=S.adj.filter(a=>a.id!==id);save();render();walletOpen()}
+function rSet(){
+  const el=document.getElementById('pgSet');
+  const net=S.days.reduce((a,d)=>a+calc(d).net,0);
+  el.innerHTML=`<div class="card"><h3>Yedekleme</h3><p class="mut">Veriler sadece bu cihazda (tarayıcıda) saklanır. JSON yedek işlerin saatini, konumunu ve bölgesini de içerir.</p>
+    <button class="b big" id="btnJson" onclick="exp()">⬇ Yedeği İndir (JSON)</button>
+    <button class="b big" id="btnCsv" style="margin-top:8px" onclick="expCsv()">⬇ İşleri İndir (CSV)</button>
+    <p class="mut">CSV: tarih, başlangıç/bitiş, ücret, alış ve bırakış koordinatı, bölge, şehir, süre, kuş uçuşu mesafe, gün no.</p>
+    <br><label><button class="big" onclick="document.getElementById('imp').click()">⬆ Yedekten Yükle</button></label>
+    <input type="file" id="imp" accept=".json,application/json" class="hide" onchange="imp(this)"></div>
+    <div class="card"><h3>Cüzdan</h3><button class="big" onclick="walletOpen()">Para çektim / düzelt</button></div>
+    <div class="card"><h3>Özet</h3><p class="mut">${S.days.length} kapalı gün · Toplam net ${tl(net)}</p><button class="r" onclick="wipe()">Tüm verileri sil</button></div>
+    <div class="card"><p class="mut">Bölge adları <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> katkıcılarından alınır (Nominatim). Mesafe kuş uçuşudur, yol mesafesi değildir.</p></div>`;
+}
+function exp(){
+  const b=new Blob([JSON.stringify(S,null,1)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='tag-yedek-'+dkey(Date.now())+'.json';a.click();
+}
+function csvCell(v){
+  const s=v==null?'':String(v);
+  return /[",\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+}
+function csvNum(v,digits){
+  if(v==null||!isFinite(v))return '';
+  return digits==null?String(Math.round(v*100)/100):Number(v).toFixed(digits);
+}
+function durumOf(e){
+  if(e.kind==='plain')return 'duz';
+  if(e.legacy)return 'eski';
+  if(e.status==='open')return 'acik';
+  if(e.status==='cancelled')return 'iptal';
+  return 'bitti';
+}
+function expCsv(){
+  const header=['tarih','baslangic','bitis_tarih','bitis','ucret','alis_lat','alis_lng','alis_bolge','alis_sehir','birakis_lat','birakis_lng','birakis_bolge','birakis_sehir','sure_dk','mesafe_km','gun_id','not','durum'];
+  const rows=[];
+  eachDay(d=>(d.entries||[]).forEach(e=>{if(e.t==='in')rows.push({d,e})}));
+  rows.sort((a,b)=>(a.e.startTs||a.e.ts)-(b.e.startTs||b.e.ts));
+  const lines=[header.join(',')];
+  rows.forEach(({d,e})=>{
+    const start=e.startTs||e.ts;
+    const ms=jobDuration(e),km=jobDistance(e);
+    const p=e.pickup||{},dp=e.dropoff||{};
+    const line=[
+      dkey(start),hm(start),e.endTs?dkey(e.endTs):'',e.endTs?hm(e.endTs):'',
+      csvNum(e.v,2),
+      p.lat==null?'':csvNum(p.lat,6),p.lng==null?'':csvNum(p.lng,6),p.area||'',p.city||'',
+      dp.lat==null?'':csvNum(dp.lat,6),dp.lng==null?'':csvNum(dp.lng,6),dp.area||'',dp.city||'',
+      ms==null?'':csvNum(ms/60000,1),km==null?'':csvNum(km,3),
+      d.id,e.note||'',durumOf(e)
+    ].map(csvCell).join(',');
+    lines.push(line);
+  });
+  const b=new Blob(['\uFEFF'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='tag-isler-'+dkey(Date.now())+'.csv';a.click();
+}
+function imp(i){
+  const f=i.files&&i.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const d=JSON.parse(r.result);
+      if(!Array.isArray(d.days))throw 0;
+      if(!confirm('Mevcut veriler yedekle değiştirilsin mi?'))return;
+      localStorage.setItem(K,JSON.stringify(d));
+      S=load();save();render();kickGeo();
+      alert('Yedek yüklendi');
+    }catch(e){alert('Geçersiz yedek dosyası')}
+  };
+  r.readAsText(f);
+  i.value='';
+}
+function wipe(){
+  if(confirm('TÜM veriler silinecek. Emin misin?')&&confirm('Geri alınamaz. Son kez onayla.')){
+    S={days:[],open:null,adj:[]};save();
+    try{localStorage.removeItem(GK)}catch(e){}
+    render();
+  }
+}
+function M(h){document.getElementById('sheet').innerHTML=h;document.getElementById('modal').classList.add('on')}
+function closeM(){modalMode=null;modalDay=null;document.getElementById('modal').classList.remove('on')}
+
+function bumpToken(id,slot){const k=id+'|'+slot;const n=(locToken.get(k)||0)+1;locToken.set(k,n);return n}
+function captureLoc(id,slot){
+  const my=bumpToken(id,slot);
+  const mark=patch=>{
+    if(locToken.get(id+'|'+slot)!==my)return;
+    const f=findEntry(id);if(!f)return;
+    const cur=f.entry[slot]||{};
+    if(cur.lat!=null&&patch.status&&patch.status!=='ok')return;
+    f.entry[slot]=Object.assign({},cur,patch);
+    save();
+    if(patch.lat!=null&&!f.entry[slot].manual&&!hasPlace(f.entry[slot]))enqueueGeo(id,slot);
+    renderSoft();
+  };
+  if(!navigator.geolocation){mark({status:'unavailable'});return}
+  let done=false;
+  const timer=setTimeout(()=>{if(done)return;done=true;mark({status:'timeout'})},LOC_MS);
+  try{
+    navigator.geolocation.getCurrentPosition(pos=>{
+      if(done)return;done=true;clearTimeout(timer);
+      const c=pos&&pos.coords;
+      if(!c||c.latitude==null||c.longitude==null){mark({status:'unavailable'});return}
+      mark({status:'ok',lat:c.latitude,lng:c.longitude,acc:c.accuracy,at:Date.now()});
+    },err=>{
+      if(done)return;done=true;clearTimeout(timer);
+      const code=err&&err.code;
+      mark({status:code===1?'denied':code===3?'timeout':'unavailable'});
+    },{enableHighAccuracy:true,timeout:LOC_MS-1000,maximumAge:slot==='dropoff'?0:8000});
+  }catch(e){
+    if(!done){done=true;clearTimeout(timer);mark({status:'unavailable'})}
+  }
+}
+function enqueueGeo(id,slot){
+  const k=id+'|'+slot;
+  if(geoQueued.has(k))return;
+  const f=findEntry(id);if(!f)return;
+  const loc=f.entry[slot];
+  if(!loc||loc.lat==null||loc.manual||hasPlace(loc))return;
+  geoQueued.add(k);
+  geoQ.push({id,slot});
+  pumpGeo();
+}
+function kickGeo(){
+  eachDay(d=>(d.entries||[]).forEach(e=>{enqueueGeo(e.id,'pickup');enqueueGeo(e.id,'dropoff')}));
+}
+async function pumpGeo(){
+  if(geoBusy||!navigator.onLine||!geoQ.length)return;
+  const job=geoQ[0];
+  const f=findEntry(job.id);
+  const loc=f&&f.entry[job.slot];
+  if(!f||!loc||loc.lat==null||loc.manual||hasPlace(loc)){
+    geoQ.shift();geoQueued.delete(job.id+'|'+job.slot);
+    setTimeout(pumpGeo,0);return;
+  }
+  const key=Number(loc.lat).toFixed(4)+','+Number(loc.lng).toFixed(4);
+  const hit=geoCache()[key];
+  if(hit&&(hit.area||hit.city)){
+    geoQ.shift();geoQueued.delete(job.id+'|'+job.slot);geoTries.delete(job.id+'|'+job.slot);
+    applyGeo(job.id,job.slot,hit);
+    setTimeout(pumpGeo,0);return;
+  }
+  geoBusy=true;
+  try{
+    const parsed=await lookupPlace(loc.lat,loc.lng);
+    if(!parsed)throw new Error('empty');
+    const all=geoCache();
+    all[key]=Object.assign({},parsed,{t:Date.now()});
+    saveGeoCache(all);
+    geoQ.shift();geoQueued.delete(job.id+'|'+job.slot);geoTries.delete(job.id+'|'+job.slot);
+    applyGeo(job.id,job.slot,parsed);
+  }catch(e){
+    geoQ.shift();
+    const k=job.id+'|'+job.slot;
+    const n=(geoTries.get(k)||0)+1;
+    geoTries.set(k,n);
+    geoQueued.delete(k);
+    if(navigator.onLine&&n<=5)setTimeout(()=>enqueueGeo(job.id,job.slot),Math.min(60000,3000*n));
+  }
+  geoBusy=false;
+  setTimeout(pumpGeo,GEO_GAP);
+}
+function applyGeo(id,slot,parsed){
+  const f=findEntry(id);if(!f)return;
+  const loc=f.entry[slot];
+  if(!loc||loc.manual||hasPlace(loc))return;
+  f.entry[slot]=Object.assign({},loc,{
+    area:parsed.area||'',
+    district:parsed.district||'',
+    neighbourhood:parsed.neighbourhood||'',
+    city:parsed.city||''
+  });
+  save();
+  renderSoft();
+}
+async function fetchJson(url){
+  const ctrl=new AbortController();
+  const t=setTimeout(()=>ctrl.abort(),8000);
+  try{
+    const res=await fetch(url,{headers:{'Accept':'application/json'},signal:ctrl.signal});
+    if(!res.ok)throw new Error(String(res.status));
+    return await res.json();
+  }finally{clearTimeout(t)}
+}
+async function lookupPlace(lat,lng){
+  try{
+    const osm=await lookupNominatim(lat,lng);
+    if(osm&&(osm.area||osm.city))return osm;
+  }catch(e){}
+  try{
+    const bdc=await lookupBdc(lat,lng);
+    if(bdc&&(bdc.area||bdc.city))return bdc;
+  }catch(e){}
+  return null;
+}
+async function lookupNominatim(lat,lng){
+  const url='https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lng)+'&zoom=17&addressdetails=1&accept-language=tr';
+  const data=await fetchJson(url);
+  return parseOsm(data&&data.address);
+}
+async function lookupBdc(lat,lng){
+  const url='https://api.bigdatacloud.net/data/reverse-geocode-client?latitude='+encodeURIComponent(lat)+'&longitude='+encodeURIComponent(lng)+'&localityLanguage=tr';
+  return parseBdc(await fetchJson(url));
+}
+function parseOsm(addr){
+  if(!addr)return null;
+  const pick=(...ks)=>{for(const k of ks)if(addr[k])return cleanName(addr[k]);return ''};
+  let neighbourhood=pick('neighbourhood','suburb','quarter','hamlet','village');
+  let district=pick('city_district','town','county','municipality','borough');
+  let city=pick('province');
+  const cityField=pick('city');
+  if(!city){
+    const state=pick('state');
+    if(state&&!/bölge/i.test(state))city=state;
+    if(!city)city=cityField;
+  }else if(!district&&cityField&&norm(cityField)!==norm(city)&&norm(cityField)!==norm(neighbourhood))district=cityField;
+  if(norm(district)===norm(city)||norm(district)===norm(neighbourhood))district='';
+  if(norm(neighbourhood)===norm(district)||norm(neighbourhood)===norm(city))neighbourhood='';
+  const parts=[];
+  if(neighbourhood)parts.push(neighbourhood);
+  if(district)parts.push(district);
+  const area=parts.join(', ');
+  if(!area&&!city)return null;
+  return {area,district,neighbourhood,city};
+}
+function parseBdc(data){
+  if(!data)return null;
+  const adm=(data.localityInfo&&data.localityInfo.administrative)||[];
+  const nameAt=lvl=>{const hit=adm.find(a=>a&&a.adminLevel===lvl&&a.name);return hit?cleanName(hit.name):''};
+  let city=nameAt(4)||data.principalSubdivision||'';
+  let district=nameAt(6)||data.locality||'';
+  let neighbourhood=nameAt(8)||nameAt(9)||nameAt(10)||'';
+  if(!city&&data.city&&norm(data.city)!==norm(district))city=cleanName(data.city);
+  if(norm(district)===norm(city))district='';
+  if(norm(neighbourhood)===norm(district)||norm(neighbourhood)===norm(city))neighbourhood='';
+  const parts=[];
+  if(neighbourhood)parts.push(neighbourhood);
+  if(district)parts.push(district);
+  const area=parts.join(', ');
+  if(!area&&!city)return null;
+  return {area,district,neighbourhood,city};
+}
+function settleStaleLoc(){
+  let changed=false;
+  eachDay(d=>(d.entries||[]).forEach(e=>['pickup','dropoff'].forEach(slot=>{
+    const loc=e[slot];
+    if(loc&&loc.status==='pending'&&loc.lat==null){loc.status='timeout';changed=true}
+  })));
+  if(changed)save();
+}
+
+function inDate(e){
+  const k=dkey(e.startTs||e.ts||Date.now());
+  if(ins.from&&k<ins.from)return false;
+  if(ins.to&&k>ins.to)return false;
+  return true;
+}
+function matchCity(e){
+  if(!ins.city)return true;
+  const want=norm(ins.city);
+  return [e.pickup&&e.pickup.city,e.dropoff&&e.dropoff.city].some(c=>c&&norm(c)===want);
+}
+function incomeRows(){
+  const rows=[];
+  eachDay(d=>(d.entries||[]).forEach(e=>{if(counts(e))rows.push({e,d})}));
+  return rows;
+}
+function setPreset(p){
+  const now=new Date();
+  ins.preset=p;
+  if(p==='all'){ins.from='';ins.to=''}
+  else if(p==='month'){
+    ins.from=dkey(new Date(now.getFullYear(),now.getMonth(),1));
+    ins.to=dkey(now);
+  }else if(p==='week'){
+    ins.from=dkey(new Date(now.getFullYear(),now.getMonth(),now.getDate()-6));
+    ins.to=dkey(now);
+  }
+  rIns();
+}
+function barsHtml(rows,cls){
+  if(!rows.length)return '<p class="mut">Kayıt yok</p>';
+  const max=Math.max(...rows.map(r=>r.fare),1);
+  return rows.map(r=>{
+    const w=r.fare>0?Math.max(4,Math.round(r.fare/max*100)):0;
+    return `<div class="barline"><div class="top"><span>${esc(r.label)}</span><b>${tl(r.fare)}</b></div><div class="mut">${r.n} müşteri${r.extra?' · '+esc(r.extra):''}</div><div class="bar ${cls||''}"><i style="width:${w}%"></i></div></div>`;
+  }).join('');
+}
+function rIns(){
+  const el=document.getElementById('pgIns');
+  const dated=incomeRows().filter(r=>inDate(r.e));
+  const cityMap=new Map();
+  dated.forEach(({e})=>[e.pickup,e.dropoff].forEach(loc=>{
+    if(!loc||!loc.city)return;
+    const n=norm(loc.city);
+    if(!n)return;
+    if(!cityMap.has(n))cityMap.set(n,{name:String(loc.city).trim(),c:0});
+    cityMap.get(n).c++;
+  }));
+  const cityNames=[...cityMap.values()].sort((a,b)=>a.name.localeCompare(b.name,'tr')).map(x=>x.name);
+  if(ins.city&&!cityNames.some(n=>norm(n)===norm(ins.city)))ins.city='';
+  const filtered=dated.filter(r=>matchCity(r.e));
+  const filters=`<div class="card"><h2>Analiz</h2><p class="mut">Hangi saatte, hangi günde ve hangi bölgede kazandığını gösterir. Ücret, iş bitince sayılır.</p>
+    <div class="tabs"><button class="${ins.preset==='week'?'on':''}" onclick="setPreset('week')">7 gün</button><button class="${ins.preset==='month'?'on':''}" onclick="setPreset('month')">Bu ay</button><button class="${ins.preset==='all'?'on':''}" onclick="setPreset('all')">Tümü</button></div>
+    <label class="mut" for="insCity">Şehir</label>
+    <select id="insCity" onchange="ins.city=this.value;rIns()"><option value="">Tüm şehirler</option>${cityNames.map(c=>`<option value="${esc(c)}"${norm(ins.city)===norm(c)?' selected':''}>${esc(c)}</option>`).join('')}</select>
+    <div class="row" style="margin-top:8px"><div><span class="mut">Başlangıç</span><input type="date" id="insFrom" value="${ins.from}" onchange="ins.from=this.value;ins.preset='custom';rIns()"></div><div><span class="mut">Bitiş</span><input type="date" id="insTo" value="${ins.to}" onchange="ins.to=this.value;ins.preset='custom';rIns()"></div></div></div>`;
+  const credit=`<p class="mut c">Bölge adları © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> katkıcıları · mesafe kuş uçuşu, yaklaşık</p>`;
+  if(!filtered.length){
+    el.innerHTML=filters+`<div class="card"><p class="mut">Bu filtrede iş yok. İş bitince kazanç, saat, bölge ve bekleme burada birikir.</p></div>`+credit;
+    return;
+  }
+  let fareKm=0,kmSum=0,fareMin=0,minSum=0;
+  const byHour=Array.from({length:24},()=>({fare:0,n:0}));
+  const byWd=Array.from({length:7},()=>({fare:0,n:0}));
+  filtered.forEach(({e})=>{
+    const t=e.startTs||e.ts;
+    const dt0=new Date(t);
+    byHour[dt0.getHours()].fare+=e.v;byHour[dt0.getHours()].n++;
+    byWd[dt0.getDay()].fare+=e.v;byWd[dt0.getDay()].n++;
+    const km=jobDistance(e),ms=jobDuration(e);
+    if(km!=null&&km>=0.1){fareKm+=e.v;kmSum+=km}
+    if(ms!=null&&ms>=60000){fareMin+=e.v;minSum+=ms/60000}
+  });
+  const inc=filtered.reduce((a,r)=>a+r.e.v,0);
+  const n=filtered.length;
+  const tlKm=kmSum?fareKm/kmSum:null;
+  const tlMin=minSum?fareMin/minSum:null;
+  const gaps=idleGaps(dated);
+  const gapsShown=ins.city?gaps.filter(g=>g.city&&norm(g.city)===norm(ins.city)):gaps;
+  const normal=gapsShown.filter(g=>g.ms<IDLE_CAP);
+  const avgIdle=(normal.length?normal:gapsShown).length?(normal.length?normal:gapsShown).reduce((a,g)=>a+g.ms,0)/(normal.length?normal.length:gapsShown.length):null;
+  const bestH=byHour.map((x,h)=>({h,fare:x.fare,n:x.n})).filter(x=>x.n).sort((a,b)=>b.fare-a.fare)[0];
+  const pickup=groupPlaces(filtered,e=>e.pickup);
+  const dropoff=groupPlaces(filtered.filter(r=>r.e.kind==='job'),e=>e.dropoff);
+  const bestA=pickup.find(x=>x.label!=='Konumsuz');
+  let maxF=0;byHour.forEach(x=>{if(x.fare>maxF)maxF=x.fare});
+  let cols='';
+  for(let h=0;h<24;h++){
+    const v=byHour[h].fare;
+    const pct=maxF>0&&v>0?Math.max(8,Math.round(v/maxF*100)):0;
+    cols+=`<div class="col" title="${h}:00 · ${byHour[h].n} müşteri"><b style="height:${Math.round(pct*0.72)}px"></b><span>${h%3===0?h:''}</span></div>`;
+  }
+  const hourList=byHour.map((x,h)=>({h,fare:x.fare,n:x.n})).filter(x=>x.n).sort((a,b)=>b.fare-a.fare).slice(0,6)
+    .map(x=>`<div class="e"><div class="body"><b>${String(x.h).padStart(2,'0')}:00</b><div class="jobmeta">${x.n} müşteri · ort. ${tl(x.fare/x.n)}</div></div><span class="amt pos">${tl(x.fare)}</span></div>`).join('');
+  const wdOrder=[1,2,3,4,5,6,0];
+  const wdNames=['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
+  const wdRows=wdOrder.map(i=>({label:wdNames[i],fare:byWd[i].fare,n:byWd[i].n,extra:byWd[i].n?'ort. '+tl(byWd[i].fare/byWd[i].n):''}));
+  const cityRows=groupCities(filtered);
+  const routes=groupRoutes(filtered).slice(0,8);
+  el.innerHTML=filters+`<div class="card"><div class="stats">
+      <div><span class="mut">Kazanç</span><b class="pos" id="insInc">${tl(inc)}</b></div>
+      <div><span class="mut">Müşteri</span><b id="insN">${n}</b></div>
+      <div><span class="mut">Müşteri başı</span><b>${n?tl(inc/n):'—'}</b></div>
+      <div><span class="mut">Ort. ₺/km</span><b id="insKm">${tlKm!=null?tl(tlKm):'—'}</b></div>
+      <div><span class="mut">Ort. ₺/dk</span><b id="insMin">${tlMin!=null?tl(tlMin):'—'}</b></div>
+      <div><span class="mut">Ort. bekleme</span><b id="insIdle">${avgIdle!=null?durShort(avgIdle):'—'}</b></div>
+    </div>
+    <p class="mut">₺/km ve ₺/dk kuş uçuşu mesafe ve süre üzerinden. Bekleme, bir işin bitişi ile sonraki işin başlangıcıdır.</p>
+    ${bestH?`<div class="call"><b>En dolu saat ${String(bestH.h).padStart(2,'0')}:00</b><div class="mut">${bestH.n} müşteri · ${tl(bestH.fare)} · ort. ${tl(bestH.fare/bestH.n)}</div></div>`:''}
+    ${bestA?`<div class="call"><b>En iyi alış: ${esc(bestA.label)}</b><div class="mut">${bestA.n} müşteri · ${tl(bestA.fare)} · ort. ${tl(bestA.avg)}</div></div>`:''}
+    </div>
+    <div class="card" id="secSaat"><h3>Saate göre</h3><div class="hist">${cols}</div>${hourList}</div>
+    <div class="card" id="secGun"><h3>Güne göre</h3>${barsHtml(wdRows,'g')}</div>
+    <div class="card" id="secAlis"><h3>Alış bölgesi</h3><p class="mut">Müşteri başı ortalama, o bölgeden alınan işlerin ücreti.</p>${barsHtml(pickup.slice(0,12).map(r=>({label:r.label,fare:r.fare,n:r.n,extra:'ort. '+tl(r.avg)})),'')}</div>
+    <div class="card" id="secBirak"><h3>Bırakış bölgesi</h3>${barsHtml(dropoff.slice(0,12).map(r=>({label:r.label,fare:r.fare,n:r.n,extra:'ort. '+tl(r.avg)})),'')}</div>
+    <div class="card" id="secSehir"><h3>Şehir (alış)</h3><p class="mut">Kazanç, alış şehrine yazılır.</p>${barsHtml(cityRows,'g')}</div>
+    <div class="card" id="secRota"><h3>Sık rotalar</h3><p class="mut">Alış bölgesi → bırakış bölgesi.</p>${routes.length?routes.map(r=>`<div class="barline"><div class="top"><span>${esc(r.label)}</span><b>${tl(r.fare)}</b></div><div class="mut">${r.n} iş · ort. ${tl(r.avg)}${r.tlKm!=null?' · '+tl(r.tlKm)+'/km':''}${r.tlMin!=null?' · '+tl(r.tlMin)+'/dk':''}</div></div>`).join(''):'<p class="mut">İki ucu da belli rota yok</p>'}</div>
+    ${idleHtml(gapsShown)}
+    ${credit}`;
+}
+function groupPlaces(rows,pick){
+  const map=new Map();
+  rows.forEach(({e})=>{
+    const loc=pick(e);
+    const label=placeLabel(loc)||'Konumsuz';
+    const key=norm(label);
+    let g=map.get(key);
+    if(!g){g={label,fare:0,n:0};map.set(key,g)}
+    g.fare+=e.v;g.n++;
+  });
+  return [...map.values()].map(g=>({label:g.label,fare:g.fare,n:g.n,avg:g.fare/g.n})).sort((a,b)=>{
+    if(a.label==='Konumsuz')return 1;
+    if(b.label==='Konumsuz')return -1;
+    return b.fare-a.fare;
+  });
+}
+function groupCities(rows){
+  const map=new Map();
+  rows.forEach(({e})=>{
+    const raw=(e.pickup&&e.pickup.city)||(e.dropoff&&e.dropoff.city)||'';
+    const label=String(raw).trim()||'Konumsuz';
+    const key=norm(label);
+    let g=map.get(key);
+    if(!g){g={label,fare:0,n:0};map.set(key,g)}
+    g.fare+=e.v;g.n++;
+  });
+  return [...map.values()].map(g=>({label:g.label,fare:g.fare,n:g.n,extra:'ort. '+tl(g.fare/g.n)})).sort((a,b)=>{
+    if(a.label==='Konumsuz')return 1;
+    if(b.label==='Konumsuz')return -1;
+    return b.fare-a.fare;
+  });
+}
+function groupRoutes(rows){
+  const map=new Map();
+  rows.forEach(({e})=>{
+    if(e.kind!=='job')return;
+    const A=placeLabel(e.pickup),B=placeLabel(e.dropoff);
+    if(!A||!B)return;
+    const key=norm(A)+'>'+norm(B);
+    let g=map.get(key);
+    if(!g){g={label:A+' → '+B,fare:0,n:0,fareKm:0,km:0,fareMin:0,min:0};map.set(key,g)}
+    g.fare+=e.v;g.n++;
+    const km=jobDistance(e),ms=jobDuration(e);
+    if(km!=null&&km>=0.1){g.fareKm+=e.v;g.km+=km}
+    if(ms!=null&&ms>=60000){g.fareMin+=e.v;g.min+=ms/60000}
+  });
+  return [...map.values()].map(g=>({
+    label:g.label,fare:g.fare,n:g.n,avg:g.fare/g.n,
+    tlKm:g.km?g.fareKm/g.km:null,
+    tlMin:g.min?g.fareMin/g.min:null
+  })).sort((a,b)=>b.n-a.n||b.fare-a.fare);
+}
+function idleGaps(rows){
+  const byDay=new Map();
+  rows.forEach(({e,d})=>{
+    if(!byDay.has(d.id))byDay.set(d.id,[]);
+    byDay.get(d.id).push(e);
+  });
+  const openByDay=new Map();
+  eachDay(d=>(d.entries||[]).forEach(e=>{
+    if(e.t==='in'&&e.kind==='job'&&e.status==='open'){
+      if(!openByDay.has(d.id))openByDay.set(d.id,[]);
+      openByDay.get(d.id).push(e);
+    }
+  }));
+  const gaps=[];
+  byDay.forEach((list,dayId)=>{
+    const seq=list.slice();
+    (openByDay.get(dayId)||[]).forEach(e=>{if(!seq.includes(e))seq.push(e)});
+    seq.sort((a,b)=>(a.startTs||a.ts)-(b.startTs||b.ts));
+    for(let i=0;i<seq.length-1;i++){
+      const a=seq[i],b=seq[i+1];
+      const end=(a.kind==='job'&&a.endTs&&!a.legacy)?a.endTs:(a.startTs||a.ts);
+      const start=b.startTs||b.ts;
+      const ms=start-end;
+      if(ms<60000)continue;
+      const drop=a.dropoff;
+      const has=drop&&(drop.area||drop.city);
+      gaps.push({
+        ms,endTs:end,nextTs:start,
+        area:has?(drop.area||''):'',
+        city:has?(drop.city||''):'',
+        label:has?placeLabel(drop):'Bilinmeyen bırakış'
+      });
+    }
+  });
+  return gaps;
+}
+function idleHtml(gaps){
+  if(!gaps.length)return `<div class="card" id="secBek"><h3>Bıraktıktan sonra bekleme</h3><p class="mut">Aynı gün bir iş bitip sonraki başlayınca, nerede ne kadar beklediğin burada görünür.</p></div>`;
+  const normal=gaps.filter(g=>g.ms<IDLE_CAP);
+  const long=gaps.filter(g=>g.ms>=IDLE_CAP);
+  const base=normal.length?normal:gaps;
+  const avg=base.reduce((a,g)=>a+g.ms,0)/base.length;
+  const longest=gaps.slice().sort((a,b)=>b.ms-a.ms).slice(0,5);
+  const map=new Map();
+  base.forEach(g=>{
+    if(!g.area&&!g.city)return;
+    const key=norm(g.label);
+    let row=map.get(key);
+    if(!row){row={label:g.label,ms:0,n:0};map.set(key,row)}
+    row.ms+=g.ms;row.n++;
+  });
+  const areas=[...map.values()].map(r=>({label:r.label,avg:r.ms/r.n,n:r.n})).sort((a,b)=>b.avg-a.avg).slice(0,8);
+  return `<div class="card" id="secBek"><h3>Bıraktıktan sonra bekleme</h3>
+    <p class="mut">Müşteriyi bıraktığın yerde sonraki işe kadar geçen süre. Ortalama, 3 saatten kısa araları kullanır; daha uzunu ayrıca listelenir.</p>
+    <div class="stats"><div><span class="mut">Ortalama</span><b>${durShort(avg)||'—'}</b></div><div><span class="mut">Ara sayısı</span><b>${gaps.length}</b></div></div>
+    <h3>Bölgeye göre</h3>
+    ${areas.length?areas.map(r=>`<div class="e"><div class="body"><div>${esc(r.label)}</div><div class="jobmeta">${r.n} bırakış</div></div><b>${durShort(r.avg)}</b></div>`).join(''):'<p class="mut">Bırakış bölgesi belli olan ara yok</p>'}
+    <h3>En uzun aralar</h3>
+    ${longest.map(g=>`<div class="e"><div class="body"><div>${esc(g.label)}</div><div class="jobmeta">${tm(g.endTs)} → sonraki ${tm(g.nextTs)}</div></div><b>${durShort(g.ms)}</b></div>`).join('')}
+    ${long.length?`<p class="mut">${long.length} ara 3 saatten uzun (mola veya kapanış olabilir).</p>`:''}
+    </div>`;
+}
+
+setInterval(()=>{
+  if(!S.open)return;
+  const c=calc(S.open);
+  const t=document.getElementById('timer');if(t)t.textContent=clock(c.ms);
+  const job=activeJob();
+  const jt=document.getElementById('jobTimer');if(jt&&job)jt.textContent=durShort(Date.now()-job.startTs)||'0 dk';
+  const idleEl=document.getElementById('idleNow');if(idleEl)idleEl.textContent=idleNowText();
+},1000);
+window.addEventListener('storage',e=>{if(e.key&&e.key!==K&&e.key!==GK)return;S=load();render();kickGeo()});
+window.addEventListener('online',()=>{geoTries.clear();kickGeo();pumpGeo();renderSoft()});
+window.addEventListener('offline',()=>renderSoft());
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){kickGeo();pumpGeo()}});
+settleStaleLoc();
+render();
+kickGeo();
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{});
+</script></body></html>
