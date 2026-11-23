@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0b0e">
+<meta name="description" content="DUR — GOLD işlemleri için risk bekçisi. Kasa, stop mesafesi ve günlük limit.">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DUR">
+<meta name="application-name" content="DUR">
+<meta name="format-detection" content="telephone=no">
+<title>DUR · Risk bekçisi</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div id="app">
+  <div class="sticky-head">
+    <header class="top" id="topBar">
+      <div class="brand">
+        <div class="word">DUR</div>
+        <div class="sub" id="dateLine">Risk bekçisi · GOLD</div>
+      </div>
+    </header>
+    <div id="banner" class="banner ok" role="status" aria-live="polite"></div>
+  </div>
+
+  <main>
+    <section class="card kasa-card" id="kasaCard">
+      <label for="kasaInput">Kasa (USD)</label>
+      <div class="kasa-row">
+        <input id="kasaInput" inputmode="decimal" autocomplete="off" placeholder="ör. 300" aria-label="Kasa tutarı">
+        <button type="button" class="btn prim" id="btnKasa">Kaydet</button>
+      </div>
+      <p class="hint" id="kasaHint">Kasa sende. Limitler buraya yazdığın tutara göre hesaplanır, cihazda saklanır.</p>
+    </section>
+
+    <section class="card" id="limitCard">
+      <h2>Limitler</h2>
+      <div class="metrics" id="metrics"></div>
+    </section>
+
+    <section class="card" id="liveCard">
+      <h2>Canlı GOLD</h2>
+      <div id="liveBox" class="live-off">Manuel mod — canlı fiyat yok. Hesap ve defter yine çalışır.</div>
+    </section>
+
+    <section class="card" id="calcCard">
+      <h2>Stop hesabı</h2>
+      <div class="seg" role="group" aria-label="Yön">
+        <button type="button" class="seg-btn on" data-side="buy" id="sideBuy">Alış</button>
+        <button type="button" class="seg-btn" data-side="sell" id="sideSell">Satış</button>
+      </div>
+      <div class="grid2">
+        <div>
+          <label for="calcEntry">Giriş</label>
+          <input id="calcEntry" inputmode="decimal" autocomplete="off" placeholder="4085.50">
+        </div>
+        <div>
+          <label for="calcStop">Stop</label>
+          <input id="calcStop" inputmode="decimal" autocomplete="off" placeholder="4079.50">
+        </div>
+      </div>
+      <div>
+        <label for="calcLot">Lot</label>
+        <input id="calcLot" inputmode="decimal" autocomplete="off" value="0.01">
+      </div>
+      <div id="calcOut" class="calc-out"></div>
+      <button type="button" class="btn ghost" id="btnToLog">Bu değerleri deftere al</button>
+    </section>
+
+    <section class="card" id="logCard">
+      <h2>Bugünkü defter</h2>
+      <p class="hint">İşlemi kendin yazıyorsun. Bu sayfa emir göndermez, MT5’e dokunmaz.</p>
+      <div class="seg" role="group" aria-label="Defter yönü">
+        <button type="button" class="seg-btn on" data-logside="buy" id="logBuy">Alış</button>
+        <button type="button" class="seg-btn" data-logside="sell" id="logSell">Satış</button>
+      </div>
+      <div class="grid2">
+        <div>
+          <label for="logEntry">Giriş</label>
+          <input id="logEntry" inputmode="decimal" autocomplete="off">
+        </div>
+        <div>
+          <label for="logStop">Stop</label>
+          <input id="logStop" inputmode="decimal" autocomplete="off" placeholder="yoksa boş bırakma">
+        </div>
+      </div>
+      <div class="grid2">
+        <div>
+          <label for="logLot">Lot</label>
+          <input id="logLot" inputmode="decimal" autocomplete="off" value="0.01">
+        </div>
+        <div>
+          <label for="logPnl">Sonuç $ (kapalıysa)</label>
+          <input id="logPnl" inputmode="decimal" autocomplete="off" placeholder="zarar eksi, ör. -6">
+        </div>
+      </div>
+      <div class="seg wrap" role="group" aria-label="Sonuç">
+        <button type="button" class="seg-btn on" data-res="open" id="resOpen">Açık</button>
+        <button type="button" class="seg-btn" data-res="win">Kazanç</button>
+        <button type="button" class="seg-btn" data-res="loss">Zarar</button>
+        <button type="button" class="seg-btn" data-res="be">Sıfır</button>
+      </div>
+      <p class="warn-line" id="logWarn" hidden></p>
+      <button type="button" class="btn prim" id="btnLog">İşlemi kaydet</button>
+      <div id="todayList" class="list"></div>
+    </section>
+
+    <section class="card" id="histCard" hidden>
+      <h2>Önceki günler</h2>
+      <div id="histList" class="list"></div>
+    </section>
+
+    <section class="card quiet" id="settingsCard">
+      <h2>Canlı köprü (isteğe bağlı)</h2>
+      <p class="hint">Yalnızca Mac’teki köprü dosyası bu telefona açıksa doldur. Adres boşsa sayfa tamamen manuel çalışır. Hesap, parola veya bakiye okunmaz; emir gönderilmez.</p>
+      <label for="liveUrl">JSON adresi</label>
+      <input id="liveUrl" type="url" inputmode="url" autocomplete="off" placeholder="http://…/xau-bridge-live.json" spellcheck="false">
+      <button type="button" class="btn ghost" id="btnLive">Adresi kaydet</button>
+    </section>
+
+    <p class="foot">0,01 lot: fiyat $1 hareket = $1. Gün TSİ (Europe/Istanbul) gece yarısında yenilenir. Kurallar: işlem başı en fazla %2 risk, aynı anda tek manuel işlem, günde 2 zarar veya %5 kayıpta dur. Veriler yalnızca bu telefonun tarayıcısında saklanır.</p>
+  </main>
+</div>
+
+<div id="sheet" class="sheet" hidden>
+  <div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <h3 id="sheetTitle">İşlemi güncelle</h3>
+    <div id="sheetBody"></div>
+    <div class="sheet-actions" id="sheetActions"></div>
+    <button type="button" class="btn ghost" id="btnSheetClose">Kapat</button>
+  </div>
+</div>
+
+<script src="logic.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

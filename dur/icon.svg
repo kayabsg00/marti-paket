@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="108" fill="#7a1212"/>
+  <rect x="28" y="28" width="456" height="456" rx="88" fill="#9b1c1c"/>
+  <rect x="28" y="28" width="456" height="456" rx="88" fill="none" stroke="#d4a54a" stroke-width="8"/>
+  <text x="256" y="308" text-anchor="middle" font-family="Arial Black, Archivo Black, sans-serif" font-size="168" font-weight="800" fill="#f4efe6" letter-spacing="8">DUR</text>
+</svg>
