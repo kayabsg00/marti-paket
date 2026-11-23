@@ -76,7 +76,35 @@ header {
 }
 body.in-corridor .speed-num { font-size: clamp(60px, 20vw, 88px); }
 .speed-unit { color: var(--mut); font-weight: 700; letter-spacing: 0.08em; margin-top: 2px; }
-.status { color: var(--mut); font-size: 14px; margin-top: 4px; min-height: 1.2em; }
+.status { color: var(--mut); font-size: 16px; margin-top: 6px; min-height: 1.2em; font-weight: 650; }
+.status.bad { color: #fecaca; font-size: 18px; font-weight: 800; }
+.fixmeta { color: var(--acc); font-size: 16px; font-weight: 800; margin: 8px 0 0; font-variant-numeric: tabular-nums; }
+.start {
+  width: 100%;
+  margin-top: 14px;
+  min-height: 76px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--acc);
+  color: #062033;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.start:disabled { opacity: 0.7; }
+.geo-error {
+  margin-top: 12px;
+  background: #3f1014;
+  color: #ffe4e6;
+  border: 1px solid #f87171;
+  border-radius: 14px;
+  padding: 14px;
+  text-align: left;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+html.sim #startBtn { display: none; }
 .card {
   background: var(--card);
   border: 1px solid var(--line);
