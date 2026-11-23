@@ -1,6 +1,6 @@
 'use strict';
 
-var CACHE = 'eds-antalya-v2';
+var CACHE = 'eds-antalya-v3';
 var ASSETS = [
   './',
   './index.html',

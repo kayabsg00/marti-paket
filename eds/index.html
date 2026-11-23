@@ -22,7 +22,7 @@
 <main>
   <header>
     <div class="brand">
-      <p class="kicker">Antalya–Denizli</p>
+      <p class="kicker">Antalya–Denizli verisi</p>
       <h1>EDS</h1>
     </div>
     <div class="header-actions">
@@ -85,11 +85,38 @@
 
   <div id="also" hidden></div>
 
+  <section id="routeCard" class="card">
+    <div class="cor-top">
+      <p class="kicker">Rota</p>
+      <button id="routeFold" class="pill-btn" type="button" aria-expanded="true">Gizle</button>
+    </div>
+    <p id="routeSummary" class="route-summary">Rota hazırlanıyor…</p>
+    <div id="routeForm">
+      <label class="field" for="startInput">Başlangıç
+        <input id="startInput" type="search" enterkeyhint="search" autocomplete="off" placeholder="İl, ilçe veya yer">
+      </label>
+      <div id="startResults" class="suggest" hidden></div>
+      <label class="field" for="endInput">Varış
+        <input id="endInput" type="search" enterkeyhint="search" autocomplete="off" placeholder="İl, ilçe veya yer">
+      </label>
+      <div id="endResults" class="suggest" hidden></div>
+      <div class="route-actions">
+        <button id="useHere" type="button">Konumum</button>
+        <button id="swapBtn" type="button">Ters çevir</button>
+        <button id="routeBtn" class="solid" type="button">Hesapla</button>
+      </div>
+    </div>
+    <p id="routeStatus" class="meta"></p>
+    <p id="routeWarn" class="warnbox" hidden>Bu rota için veri sınırlı. EDS verisi Antalya–Denizli güzergahlarını kapsıyor.</p>
+    <ol id="routeList"></ol>
+  </section>
+
   <button id="mapBtn" class="ghost" type="button" aria-expanded="false" aria-controls="mapWrap">Haritayı göster</button>
   <div id="mapWrap" hidden>
     <div id="map" role="region" aria-label="EDS haritası"></div>
     <p id="mapMsg" class="meta" hidden></p>
     <div class="legend">
+      <span><i class="swatch route"></i>Rota</span>
       <span><i class="swatch cor"></i>Koridor</span>
       <span><i class="swatch rad"></i>Radar</span>
       <span><i class="swatch me"></i>Sen</span>

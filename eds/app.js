@@ -32,6 +32,21 @@
   var pendingPos = null;
   var lastConsumed = 0;
 
+  var fcData = null;
+  var fullModel = null;
+  var coverLines = [];
+  var activeModel = null;
+  var routeState = null;
+  var places = { start: null, end: null };
+  var routeLayer = null;
+  var edsLayer = null;
+  var simBooted = false;
+  var searchTimer = 0;
+  var searchSeq = 0;
+  var ROUTE_KEY = 'eds-route-v1';
+  var DEFAULT_START = { label: 'Antalya', lat: 36.896902, lng: 30.713283 };
+  var DEFAULT_END = { label: 'Denizli', lat: 37.776538, lng: 29.086509 };
+
   var sim = {
     path: null,
     playing: false,
@@ -323,39 +338,7 @@
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
     if (map.attributionControl) map.attributionControl.addAttribution('Kaynak: YolRadar');
-    var bounds = [];
-    model.corridors.forEach(function (c) {
-      var latlngs = c.latlngs.map(function (p) { return [p.lat, p.lng]; });
-      var lineStyle = { color: '#ff4d4d', weight: 5, opacity: 0.95 };
-      if (c.kind === 'corridor_egm') lineStyle.dashArray = '7 8';
-      L.polyline(latlngs, lineStyle).bindPopup(popupHtml([
-        c.name,
-        c.limit ? ('Limit ' + c.limit + ' km/h') : 'Limit bilinmiyor',
-        c.publishedKm ? ('Tabela ' + c.publishedKm + ' km') : '',
-        c.minTimeLabel ? ('Asgari ' + c.minTimeLabel) : '',
-        c.yol || c.aciklama,
-        precisionLabel(c.precision),
-        c.precisionTr
-      ])).addTo(map);
-      latlngs.forEach(function (ll) { bounds.push(ll); });
-    });
-    model.radars.forEach(function (r) {
-      L.circleMarker([r.lat, r.lng], {
-        radius: 7,
-        color: '#ffd089',
-        weight: 2,
-        fillColor: '#ff8a00',
-        fillOpacity: 0.95
-      }).bindPopup(popupHtml([
-        r.name,
-        r.road,
-        limitLabel(r.limit),
-        'Sabit radar',
-        precisionLabel(r.precision)
-      ])).addTo(map);
-      bounds.push([r.lat, r.lng]);
-    });
-    if (bounds.length) map.fitBounds(bounds, { padding: [18, 18] });
+    drawMapLayers(true);
     map.on('dragstart', function () {
       follow = false;
       $('followBtn').hidden = false;
@@ -558,7 +541,8 @@
     $('simToggle').textContent = sim.playing ? 'Duraklat' : 'Sürdür';
     $('simSpeedVal').textContent = String(Math.round(sim.speed));
     $('simSpeed').value = String(Math.round(sim.speed));
-    $('simBanner').textContent = 'Sınama modu — Korkuteli güzergahı · ' + sim.rate + '× · gerçek GPS değil';
+    var via = places.start && places.end ? (places.start.label + ' → ' + places.end.label) : 'seçilen rota';
+    $('simBanner').textContent = 'Sınama modu — ' + via + ' · ' + sim.rate + '× · gerçek GPS değil';
     document.querySelectorAll('#simDock [data-rate]').forEach(function (btn) {
       btn.setAttribute('aria-pressed', String(Number(btn.getAttribute('data-rate')) === sim.rate));
     });
@@ -606,25 +590,31 @@
   }
 
   function findBookmarks() {
-    var scan = EDS.createSession(model);
-    var v = sim.speed / 3.6;
-    var t0 = Date.now();
-    var approach = 0;
-    var inside = null;
-    for (var m = 0; m <= sim.path.lengthM; m += 40) {
-      var p = EDS.pointAlong(sim.path.points, m);
-      var h = EDS.headingAlong(sim.path.points, m);
-      var r = scan.push({
-        lat: p.lat, lng: p.lng, heading: h,
-        timeMs: t0 + (m / v) * 1000,
-        speedMps: v
-      }, { alerts: false });
-      if (!approach && r.next && r.nextMode === 'sonraki' && r.next.dist <= 1600 && r.next.dist >= 1200) approach = m;
-      var kor = r.insides.filter(function (i) { return i.id === 'korkuteli'; })[0];
-      if (inside == null && kor && r.insides.length === 1 && kor.drivenKm > 3) inside = m;
+    var items = (routeState && routeState.items) || [];
+    var first = null;
+    var i;
+    for (i = 0; i < items.length; i++) {
+      if (items[i].alongM > 400) { first = items[i]; break; }
     }
-    sim.bookmarks.approach = approach || 0;
-    sim.bookmarks.inside = inside == null ? Math.min(sim.path.lengthM * 0.55, sim.path.lengthM) : inside;
+    sim.bookmarks.approach = first ? Math.max(0, first.alongM - 1500) : 0;
+    var scan = EDS.createSession(activeModel || fullModel);
+    var found = null;
+    var t0 = Date.now();
+    for (i = 0; i < items.length && found == null; i++) {
+      if (items[i].kind === 'radar') continue;
+      var start = Math.max(0, items[i].alongM + 250);
+      var span = Math.min(6000, Math.max(800, (items[i].lengthM || 2000) * 0.45));
+      var end = Math.min(sim.path.lengthM, items[i].alongM + span);
+      for (var m = start; m <= end; m += 150) {
+        var p = EDS.pointAlong(sim.path.points, m);
+        var h = EDS.headingAlong(sim.path.points, m);
+        var r = scan.push({
+          lat: p.lat, lng: p.lng, heading: h, timeMs: t0 + m * 40, speedMps: 27
+        }, { alerts: false });
+        if (r.insides.length) { found = m; break; }
+      }
+    }
+    sim.bookmarks.inside = found == null ? sim.bookmarks.approach : found;
   }
 
   function simFrame(now) {
@@ -651,12 +641,12 @@
     sim.raf = requestAnimationFrame(simFrame);
   }
 
-  function startSim(fc) {
-    sim.path = EDS.buildSimPath(fc);
-    if (!sim.path) {
+  function startSim() {
+    if (!routeState || !routeState.points || routeState.points.length < 2) {
       $('status').textContent = 'Sınama güzergahı yok';
       return;
     }
+    sim.path = { points: routeState.points, lengthM: routeState.lengthM };
     $('simBanner').hidden = false;
     $('simDock').hidden = false;
     findBookmarks();
@@ -727,6 +717,276 @@
     });
   });
 
+  function onRouteIds() {
+    var ids = {};
+    ((routeState && routeState.items) || []).forEach(function (it) { ids[it.id] = true; });
+    return ids;
+  }
+
+  function drawMapLayers(fit) {
+    if (!map || !window.L || !fullModel) return;
+    if (edsLayer) map.removeLayer(edsLayer);
+    if (routeLayer) map.removeLayer(routeLayer);
+    routeLayer = null;
+    edsLayer = L.layerGroup().addTo(map);
+    var on = onRouteIds();
+    var hasRoute = !!(routeState && routeState.points && routeState.points.length > 1);
+    if (hasRoute) {
+      routeLayer = L.polyline(routeState.points.map(function (p) { return [p.lat, p.lng]; }), {
+        color: '#38bdf8', weight: 6, opacity: 0.9
+      }).addTo(map);
+    }
+    var bounds = [];
+    fullModel.corridors.forEach(function (c) {
+      var hot = !hasRoute || on[c.id];
+      var latlngs = c.latlngs.map(function (p) { return [p.lat, p.lng]; });
+      var style = { color: '#ff4d4d', weight: hot ? 5 : 3, opacity: hot ? 0.95 : 0.28 };
+      if (c.kind === 'corridor_egm') style.dashArray = '7 8';
+      L.polyline(latlngs, style).bindPopup(popupHtml([
+        c.name,
+        c.limit ? ('Limit ' + c.limit + ' km/h') : 'Limit bilinmiyor',
+        c.publishedKm ? ('Tabela ' + c.publishedKm + ' km') : '',
+        c.minTimeLabel ? ('Asgari ' + c.minTimeLabel) : '',
+        c.yol || c.aciklama,
+        precisionLabel(c.precision),
+        c.precisionTr
+      ])).addTo(edsLayer);
+      if (hot) latlngs.forEach(function (ll) { bounds.push(ll); });
+    });
+    fullModel.radars.forEach(function (r) {
+      var hot = !hasRoute || on[r.id];
+      L.circleMarker([r.lat, r.lng], {
+        radius: hot ? 7 : 4,
+        color: '#ffd089',
+        weight: 2,
+        fillColor: '#ff8a00',
+        fillOpacity: hot ? 0.95 : 0.35
+      }).bindPopup(popupHtml([
+        r.name, r.road, limitLabel(r.limit), 'Sabit radar', precisionLabel(r.precision)
+      ])).addTo(edsLayer);
+      if (hot) bounds.push([r.lat, r.lng]);
+    });
+    if (routeLayer) routeLayer.bringToBack();
+    if (fit && !lastFix) {
+      var frame = hasRoute ? routeState.points.map(function (p) { return [p.lat, p.lng]; }) : bounds;
+      if (frame.length) map.fitBounds(frame, { padding: [18, 18] });
+    }
+  }
+
+  function renderRoute() {
+    var start = places.start;
+    var end = places.end;
+    var summary = (start && end) ? (start.label + ' → ' + end.label) : 'Rota seçin';
+    if (routeState) summary += ' · ' + fmtDist(routeState.lengthM);
+    $('routeSummary').textContent = summary;
+    $('routeWarn').hidden = !(routeState && routeState.limited);
+    var list = $('routeList');
+    list.replaceChildren();
+    var items = (routeState && routeState.items) || [];
+    if (!routeState) {
+      var wait = document.createElement('li');
+      wait.textContent = 'Rota bekleniyor.';
+      list.appendChild(wait);
+      return;
+    }
+    if (!items.length) {
+      var empty = document.createElement('li');
+      empty.textContent = 'Bu rotada kayıtlı EDS yok.';
+      list.appendChild(empty);
+      return;
+    }
+    items.forEach(function (it) {
+      var li = document.createElement('li');
+      var bits = [fmtDist(it.alongM), it.name];
+      if (it.kind === 'radar') bits.push('Sabit radar');
+      else if (it.kind === 'egm') bits.push('EGM koridoru');
+      else bits.push('Hız koridoru');
+      if (it.limit) bits.push('Limit ' + Math.round(it.limit) + ' km/h');
+      if (it.kind !== 'radar') {
+        if (it.publishedKm) bits.push(fmtKm(it.publishedKm));
+        else if (it.lengthM) bits.push(fmtKm(it.lengthM / 1000));
+        if (it.minTimeLabel) bits.push('asgari ' + it.minTimeLabel);
+      }
+      li.textContent = bits.join(' · ');
+      list.appendChild(li);
+    });
+  }
+
+  function savePlaces() {
+    try { localStorage.setItem(ROUTE_KEY, JSON.stringify({ start: places.start, end: places.end })); }
+    catch (e) {}
+  }
+
+  function loadPlaces() {
+    if (params.get('yon') === 'ters') return { start: DEFAULT_END, end: DEFAULT_START };
+    try {
+      var raw = localStorage.getItem(ROUTE_KEY);
+      if (raw) {
+        var saved = JSON.parse(raw);
+        if (saved && saved.start && saved.end && isFinite(saved.start.lat) && isFinite(saved.end.lat)) return saved;
+      }
+    } catch (e) {}
+    return { start: DEFAULT_START, end: DEFAULT_END };
+  }
+
+  function fillPlaceInputs() {
+    $('startInput').value = places.start ? places.start.label : '';
+    $('endInput').value = places.end ? places.end.label : '';
+  }
+
+  function applyDrivingLine(latlngs, note) {
+    var line = EDS.lineFromLatLngs(EDS.simplifyLine(latlngs, 700));
+    var items = EDS.alongRoute(fullModel, line, 180);
+    var limited = EDS.coverageLimited(line, coverLines, 8000) || (items.length === 0 && line.lengthM > 25000);
+    activeModel = EDS.subsetModel(fullModel, items);
+    if (SIM && simBooted) {
+      sim.playing = false;
+      if (sim.raf) cancelAnimationFrame(sim.raf);
+      sim.raf = 0;
+    }
+    session = EDS.createSession(activeModel);
+    routeState = { points: line.points, lengthM: line.lengthM, items: items, limited: limited };
+    $('routeStatus').textContent = note || (items.length + ' EDS kaydı. Sürüşte yalnız bunlar sayılır.');
+    renderRoute();
+    drawMapLayers(false);
+    savePlaces();
+    if (SIM && simBooted) startSim();
+  }
+
+  function computeRoute() {
+    if (!places.start || !places.end) {
+      $('routeStatus').textContent = 'Başlangıç ve varış seçin.';
+      return Promise.resolve();
+    }
+    if (EDS.haversine(places.start, places.end) < 300) {
+      $('routeStatus').textContent = 'Başlangıç ve varış çok yakın.';
+      return Promise.resolve();
+    }
+    $('routeBtn').disabled = true;
+    $('routeStatus').textContent = 'Rota hesaplanıyor…';
+    var url = 'https://router.project-osrm.org/route/v1/driving/' +
+      places.start.lng + ',' + places.start.lat + ';' +
+      places.end.lng + ',' + places.end.lat +
+      '?overview=full&geometries=geojson&alternatives=false';
+    return fetch(url).then(function (res) {
+      if (!res.ok) throw new Error('osrm');
+      return res.json();
+    }).then(function (data) {
+      if (!data.routes || !data.routes[0] || !data.routes[0].geometry) throw new Error('osrm');
+      applyDrivingLine(data.routes[0].geometry.coordinates.map(function (c) {
+        return { lat: c[1], lng: c[0] };
+      }), '');
+    }).catch(function () {
+      var fb = EDS.fallbackDrivingLine(fcData, places.start, places.end);
+      if (!fb) {
+        $('routeStatus').textContent = 'Rota bulunamadı.';
+        routeState = null;
+        activeModel = fullModel;
+        session = EDS.createSession(fullModel);
+        renderRoute();
+        return;
+      }
+      applyDrivingLine(fb.line, 'Rota servisi yanıt vermedi. Kayıtlı Antalya–Denizli hattı kullanılıyor.');
+    }).then(function () {
+      $('routeBtn').disabled = false;
+    });
+  }
+
+  function showSuggestions(which, rows) {
+    var box = $(which === 'start' ? 'startResults' : 'endResults');
+    box.replaceChildren();
+    if (!rows || !rows.length) { box.hidden = true; return; }
+    rows.forEach(function (row) {
+      var li = document.createElement('li');
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      var parts = String(row.display_name || '').split(',');
+      btn.textContent = row.display_name;
+      btn.addEventListener('click', function () {
+        places[which] = {
+          label: parts.slice(0, 2).join(',').trim() || 'Yer',
+          lat: parseFloat(row.lat),
+          lng: parseFloat(row.lon)
+        };
+        $(which === 'start' ? 'startInput' : 'endInput').value = places[which].label;
+        box.hidden = true;
+        savePlaces();
+        if (places.start && places.end) computeRoute();
+      });
+      li.appendChild(btn);
+      box.appendChild(li);
+    });
+    box.hidden = false;
+  }
+
+  function searchPlaces(which) {
+    var input = $(which === 'start' ? 'startInput' : 'endInput');
+    var box = $(which === 'start' ? 'startResults' : 'endResults');
+    var q = input.value.trim();
+    if (q.length < 2) { box.hidden = true; return; }
+    var seq = ++searchSeq;
+    var url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&countrycodes=tr&accept-language=tr&q=' +
+      encodeURIComponent(q);
+    fetch(url, { headers: { 'Accept': 'application/json' } }).then(function (res) {
+      if (!res.ok) throw new Error('geo');
+      return res.json();
+    }).then(function (rows) {
+      if (seq !== searchSeq) return;
+      showSuggestions(which, rows);
+    }).catch(function () {
+      if (seq !== searchSeq) return;
+      box.hidden = true;
+      $('routeStatus').textContent = 'Yer araması başarısız.';
+    });
+  }
+
+  function bindSearch(which) {
+    $(which === 'start' ? 'startInput' : 'endInput').addEventListener('input', function () {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(function () { searchPlaces(which); }, 450);
+    });
+  }
+
+  bindSearch('start');
+  bindSearch('end');
+  $('useHere').addEventListener('click', function () {
+    function take(lat, lng) {
+      places.start = { label: 'Konumum', lat: lat, lng: lng };
+      $('startInput').value = 'Konumum';
+      $('startResults').hidden = true;
+      savePlaces();
+      if (places.end) computeRoute();
+    }
+    if (lastFix) { take(lastFix.lat, lastFix.lng); return; }
+    if (!navigator.geolocation) {
+      $('routeStatus').textContent = 'Konum alınamadı. Önce Başlat’a dokunun.';
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      take(pos.coords.latitude, pos.coords.longitude);
+    }, function () {
+      $('routeStatus').textContent = 'Konum alınamadı. Önce Başlat’a dokunun.';
+    }, { enableHighAccuracy: true, maximumAge: 60000, timeout: 20000 });
+  });
+  $('swapBtn').addEventListener('click', function () {
+    var tmp = places.start;
+    places.start = places.end;
+    places.end = tmp;
+    fillPlaceInputs();
+    $('startResults').hidden = true;
+    $('endResults').hidden = true;
+    savePlaces();
+    computeRoute();
+  });
+  $('routeBtn').addEventListener('click', function () { computeRoute(); });
+  $('routeFold').addEventListener('click', function () {
+    var open = $('routeForm').hidden;
+    $('routeForm').hidden = !open;
+    $('routeList').hidden = !open;
+    $('routeFold').textContent = open ? 'Gizle' : 'Göster';
+    $('routeFold').setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+
   paintMute();
 
   if ('serviceWorker' in navigator) {
@@ -748,10 +1008,22 @@
     if (!res.ok) throw new Error('veri');
     return res.json();
   }).then(function (fc) {
-    model = EDS.buildModel(fc);
-    session = EDS.createSession(model);
-    if (SIM) startSim(fc);
-    else if (pendingPos) onFix(pendingPos);
+    fcData = fc;
+    fullModel = EDS.buildModel(fc);
+    model = fullModel;
+    coverLines = EDS.networkLines(fc);
+    activeModel = fullModel;
+    session = EDS.createSession(fullModel);
+    places = loadPlaces();
+    fillPlaceInputs();
+    return computeRoute();
+  }).then(function () {
+    if (SIM) {
+      simBooted = true;
+      startSim();
+      return;
+    }
+    if (pendingPos) onFix(pendingPos);
     else if (!$('geoError').hidden) { /* keep the iOS error on screen */ }
     else if ($('startBtn').disabled) $('status').textContent = 'Konum alınıyor…';
     else if (!gotFix) $('status').textContent = 'Konum için Başlat’a dokun.';

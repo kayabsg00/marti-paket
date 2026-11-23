@@ -528,6 +528,156 @@
     return { points: points, lengthM: points[points.length - 1].along, name: 'Korkuteli' };
   }
 
+  function lineFromLatLngs(latlngs) {
+    var cum = [0];
+    for (var i = 0; i < latlngs.length - 1; i++) cum.push(cum[i] + haversine(latlngs[i], latlngs[i + 1]));
+    var points = [];
+    for (var j = 0; j < latlngs.length; j++) {
+      points.push({ lat: latlngs[j].lat, lng: latlngs[j].lng, along: cum[j] });
+    }
+    return { latlngs: latlngs, cum: cum, lengthM: cum[cum.length - 1] || 0, points: points };
+  }
+
+  function simplifyLine(latlngs, maxPoints) {
+    if (!latlngs || latlngs.length < 2) return (latlngs || []).slice();
+    if (latlngs.length <= maxPoints) return latlngs.slice();
+    var out = [];
+    var last = latlngs.length - 1;
+    var step = last / (maxPoints - 1);
+    var prev = -1;
+    for (var i = 0; i < maxPoints; i++) {
+      var idx = Math.min(last, Math.round(i * step));
+      if (idx === prev) continue;
+      prev = idx;
+      out.push(latlngs[idx]);
+    }
+    var tail = latlngs[last];
+    var end = out[out.length - 1];
+    if (!end || end.lat !== tail.lat || end.lng !== tail.lng) out.push(tail);
+    return out;
+  }
+
+  function alongRoute(model, routeLine, thresholdM) {
+    var limit = thresholdM || 170;
+    var items = [];
+    if (!routeLine || routeLine.lengthM < 1) return items;
+    (model.radars || []).forEach(function (r) {
+      var proj = projectPolyline(r, routeLine);
+      if (proj.dist <= limit) {
+        items.push({
+          kind: 'radar',
+          id: r.id,
+          name: r.name,
+          limit: r.limit,
+          alongM: proj.along,
+          road: r.road || '',
+          feature: r
+        });
+      }
+    });
+    (model.corridors || []).forEach(function (c) {
+      var covered = 0;
+      var minAlong = Infinity;
+      for (var s = 0; s < c.latlngs.length - 1; s++) {
+        var a = c.latlngs[s];
+        var b = c.latlngs[s + 1];
+        var mid = { lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 };
+        var mp = projectPolyline(mid, routeLine);
+        var segLen = c.cum[s + 1] - c.cum[s];
+        if (mp.dist <= limit) {
+          covered += segLen;
+          if (mp.along < minAlong) minAlong = mp.along;
+        }
+      }
+      var ratio = c.lengthM > 0 ? covered / c.lengthM : 0;
+      if (!(covered >= 1500 || (ratio >= 0.5 && covered >= 400))) return;
+      items.push({
+        kind: c.kind === 'corridor_egm' ? 'egm' : 'corridor',
+        id: c.id,
+        name: c.name,
+        limit: c.limit,
+        alongM: minAlong,
+        publishedKm: c.publishedKm,
+        minTimeLabel: c.minTimeLabel,
+        lengthM: c.lengthM,
+        yol: c.yol || '',
+        feature: c
+      });
+    });
+    items.sort(function (a, b) { return a.alongM - b.alongM; });
+    return items;
+  }
+
+  function subsetModel(model, items) {
+    var corridors = {};
+    var radars = {};
+    items.forEach(function (it) {
+      if (it.kind === 'radar') radars[it.id] = true;
+      else corridors[it.id] = true;
+    });
+    return {
+      corridors: (model.corridors || []).filter(function (c) { return corridors[c.id]; }),
+      radars: (model.radars || []).filter(function (r) { return radars[r.id]; })
+    };
+  }
+
+  function coverageLimited(routeLine, coverLines, bufferM) {
+    var buffer = bufferM || 8000;
+    if (!routeLine || routeLine.lengthM < 5000 || !coverLines || !coverLines.length) return false;
+    var step = Math.max(2000, routeLine.lengthM / 80);
+    var n = 0;
+    var outside = 0;
+    for (var d = 0; d <= routeLine.lengthM; d += step) {
+      var p = pointAlong(routeLine.points, d);
+      var near = false;
+      for (var i = 0; i < coverLines.length; i++) {
+        if (projectPolyline(p, coverLines[i]).dist <= buffer) { near = true; break; }
+      }
+      n++;
+      if (!near) outside++;
+    }
+    return n > 0 && outside / n > 0.22;
+  }
+
+  function networkLines(fc) {
+    var lines = [];
+    ((fc && fc.features) || []).forEach(function (f) {
+      var p = f.properties || {};
+      if (p.kind === 'route' && f.geometry && f.geometry.type === 'LineString') {
+        var ll = f.geometry.coordinates.map(function (c) { return { lat: c[1], lng: c[0] }; });
+        lines.push(lineFromLatLngs(simplifyLine(ll, 420)));
+      }
+    });
+    return lines;
+  }
+
+  function fallbackDrivingLine(fc, start, end) {
+    if (!start || !end) return null;
+    var best = null;
+    ((fc && fc.features) || []).forEach(function (f) {
+      var p = f.properties || {};
+      if (p.kind !== 'route' || !f.geometry || f.geometry.type !== 'LineString') return;
+      var coords = f.geometry.coordinates.map(function (c) { return { lat: c[1], lng: c[0] }; });
+      if (coords.length < 2) return;
+      var a = coords[0];
+      var b = coords[coords.length - 1];
+      var forward = haversine(start, a) + haversine(end, b);
+      var backward = haversine(start, b) + haversine(end, a);
+      var reversed = backward + 3000 < forward;
+      var score = reversed ? backward : forward;
+      if (!best || score < best.score) {
+        best = {
+          score: score,
+          reversed: reversed,
+          name: p.name || 'Güzergah',
+          line: reversed ? coords.slice().reverse() : coords.slice()
+        };
+      }
+    });
+    if (!best || best.score > 90000) return null;
+    return best;
+  }
+
   return {
     haversine: haversine,
     bearing: bearing,
@@ -539,6 +689,14 @@
     pointAlong: pointAlong,
     headingAlong: headingAlong,
     buildSimPath: buildSimPath,
+    lineFromLatLngs: lineFromLatLngs,
+    simplifyLine: simplifyLine,
+    alongRoute: alongRoute,
+    subsetModel: subsetModel,
+    coverageLimited: coverageLimited,
+    networkLines: networkLines,
+    fallbackDrivingLine: fallbackDrivingLine,
+    projectPolyline: projectPolyline,
     ENTER_M: ENTER_M
   };
 });
