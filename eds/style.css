@@ -206,6 +206,32 @@ html.sim #startBtn { display: none; }
 .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.92) saturate(0.55); }
 .legend { display: flex; gap: 14px; color: var(--mut); font-size: 13px; font-weight: 700; margin-top: 8px; }
 .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 99px; margin-right: 6px; vertical-align: -1px; }
+.field { display: block; color: var(--mut); font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.field input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  font-size: 17px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #0b1018;
+  color: var(--txt);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+}
+.route-summary { font-weight: 800; font-size: 18px; margin: 4px 0 10px; }
+.suggest { list-style: none; margin: 0 0 8px; padding: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.suggest button { width: 100%; text-align: left; background: #0b1018; border: 0; border-bottom: 1px solid var(--line); padding: 12px; min-height: 48px; font-weight: 650; }
+.suggest li:last-child button { border-bottom: 0; }
+.route-actions { display: flex; gap: 8px; margin-top: 8px; }
+.route-actions button { flex: 1; min-height: 48px; border-radius: 12px; border: 1px solid var(--line); background: #1c2838; font-weight: 800; padding: 8px; }
+.route-actions .solid { width: auto; margin-top: 0; border: 0; background: var(--acc); color: #062033; }
+#routeList { margin: 10px 0 0; padding-left: 18px; max-height: 240px; overflow: auto; }
+#routeList li { margin: 0 0 8px; font-size: 15px; line-height: 1.35; }
+.warnbox { background: #3a2c0c; color: #ffe0a3; border-radius: 12px; padding: 10px 12px; font-weight: 700; margin-top: 8px; }
+.swatch.route { background: #38bdf8; }
 .swatch.cor { background: #ff4d4d; }
 .swatch.rad { background: var(--radar); }
 .swatch.me { background: #38bdf8; }
