@@ -18,6 +18,7 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<script>if (location.search.indexOf('sim=1') !== -1) document.documentElement.classList.add('sim');</script>
 <main>
   <header>
     <div class="brand">
@@ -36,8 +37,10 @@
     <p class="kicker center">Anlık hız</p>
     <div class="speed-num" id="speedVal">–</div>
     <div class="speed-unit">km/h</div>
-    <p class="status" id="status">Veriler yükleniyor…</p>
-    <button id="retryBtn" class="solid" type="button" hidden>Konum izni iste</button>
+    <p class="status" id="status">Konum için Başlat’a dokun.</p>
+    <p class="fixmeta" id="fixMeta" hidden></p>
+    <button id="startBtn" class="start" type="button">Başlat</button>
+    <p id="geoError" class="geo-error" hidden role="alert"></p>
   </section>
 
   <p id="flash" class="flash" hidden role="status"></p>

@@ -23,6 +23,14 @@
   var geoWatch = null;
   var smoothHeading = null;
   var prevFix = null;
+  var gotFix = false;
+  var lastFixAt = 0;
+  var lastAcc = null;
+  var coarseTried = false;
+  var coarseInFlight = false;
+  var geoTimer = 0;
+  var pendingPos = null;
+  var lastConsumed = 0;
 
   var sim = {
     path: null,
@@ -159,7 +167,11 @@
     flashTimer = setTimeout(function () { flash.hidden = true; }, 3200);
     if (muted) return;
     beep(near ? 3 : 2, near ? 1240 : 880);
-    if (navigator.vibrate) navigator.vibrate(near ? [280, 70, 280, 70, 280] : [180, 90, 180]);
+    try {
+      if (typeof navigator.vibrate === 'function') {
+        navigator.vibrate(near ? [280, 70, 280, 70, 280] : [180, 90, 180]);
+      }
+    } catch (e) { /* iOS Safari has no vibration */ }
   }
 
   function renderNext(result) {
@@ -361,9 +373,100 @@
     if (open) ensureMap();
   }
 
+  function paintFix() {
+    var el = $('fixMeta');
+    if (!el) return;
+    if (!lastFixAt) {
+      el.hidden = true;
+      return;
+    }
+    var age = Math.max(0, Math.round((Date.now() - lastFixAt) / 1000));
+    var acc = (lastAcc != null && isFinite(lastAcc)) ? ('±' + Math.round(lastAcc) + ' m') : 'doğruluk yok';
+    var when = age < 2 ? 'şimdi' : (age + ' sn önce');
+    var text = 'GPS · ' + acc + ' · son konum ' + when;
+    if (age >= 20) text += ' · güncellenmiyor';
+    if (lastAcc != null && lastAcc > 1000) text += ' · Tam Konum kapalı olabilir';
+    el.hidden = false;
+    el.textContent = text;
+  }
+
+  function geoCopy(err) {
+    var code = err && err.code;
+    if (err && err.insecure) {
+      return {
+        title: 'Konum alınamadı',
+        hint: 'Konum yalnızca HTTPS sayfada çalışır. Adres https://kayabsg00.github.io/marti-paket/eds/ olmalı.'
+      };
+    }
+    if (err && err.unsupported) {
+      return {
+        title: 'Konum alınamadı',
+        hint: 'Bu tarayıcı konum vermiyor. iPhone’da Safari ile açın.'
+      };
+    }
+    if (code === 1) {
+      return {
+        title: 'Konum izni reddedildi',
+        hint: 'Ayarlar > Gizlilik > Konum Servisleri > Safari Web Siteleri bölümünü “Uygulamayı Kullanırken” yapın. Safari’de adres çubuğundaki aA menüsünden Web Sitesi Ayarları > Konum > İzin Ver. Sonra Tekrar dene.'
+      };
+    }
+    if (code === 3) {
+      return {
+        title: 'Konum zaman aşımı',
+        hint: 'GPS henüz kilitlenmedi. Açık alanda tekrar dokunun. Ayarlar > Gizlilik > Konum Servisleri > Safari Web Siteleri içinde Tam Konum açık olsun.'
+      };
+    }
+    return {
+      title: 'Konum alınamadı',
+      hint: 'Ayarlar > Gizlilik > Konum Servisleri > Safari Web Siteleri izinli olsun. Açık alanda Başlat’a tekrar dokunun.'
+    };
+  }
+
+  function showGeoError(err) {
+    clearTimeout(geoTimer);
+    var copy = geoCopy(err);
+    var status = $('status');
+    status.textContent = copy.title;
+    status.classList.add('bad');
+    var box = $('geoError');
+    box.hidden = false;
+    box.textContent = copy.title + '. ' + copy.hint;
+    $('live').textContent = box.textContent;
+    var btn = $('startBtn');
+    btn.hidden = false;
+    btn.disabled = false;
+    btn.textContent = 'Tekrar dene';
+  }
+
+  function armWatchdog(ms) {
+    clearTimeout(geoTimer);
+    geoTimer = setTimeout(function () {
+      if (!gotFix) showGeoError({ code: 3 });
+    }, ms);
+  }
+
   function onFix(pos) {
+    if (!pos || !pos.coords) return;
+    gotFix = true;
+    coarseInFlight = false;
+    clearTimeout(geoTimer);
+    pendingPos = pos;
+    lastFixAt = Date.now();
+    lastAcc = typeof pos.coords.accuracy === 'number' ? pos.coords.accuracy : null;
+    $('geoError').hidden = true;
+    $('status').classList.remove('bad');
+    $('status').textContent = 'Konum açık';
+    $('startBtn').hidden = true;
+    $('startBtn').disabled = false;
+    paintFix();
+    if (!session) return;
+    var stamp = pos.timestamp;
+    if (typeof stamp !== 'number' || !isFinite(stamp) || stamp <= 0) stamp = lastFixAt;
+    else if (stamp < 1e12) stamp = stamp * 1000;
+    if (stamp === lastConsumed) return;
+    lastConsumed = stamp;
     var c = pos.coords;
-    var t = pos.timestamp || Date.now();
+    var t = stamp;
     var lat = c.latitude;
     var lng = c.longitude;
     var speed = (typeof c.speed === 'number' && c.speed >= 0 && c.speed < 70) ? c.speed : null;
@@ -371,7 +474,7 @@
     if (prevFix) {
       var dist = EDS.haversine(prevFix, { lat: lat, lng: lng });
       var dt = (t - prevFix.t) / 1000;
-      if (speed == null && dt > 0.3) speed = dist / dt;
+      if (speed == null && dt > 0.3 && dt < 30) speed = dist / dt;
       if (dist > 8) {
         var b = EDS.bearing(prevFix, { lat: lat, lng: lng });
         smoothHeading = smoothHeading == null ? b : EDS.lerpAngle(smoothHeading, b, 0.45);
@@ -380,42 +483,75 @@
     if (heading == null) heading = smoothHeading;
     else smoothHeading = heading;
     prevFix = { lat: lat, lng: lng, t: t };
-    $('retryBtn').hidden = true;
-    $('status').textContent = 'GPS açık' + (c.accuracy ? (' · ±' + Math.round(c.accuracy) + ' m') : '');
     var result = session.push({
       lat: lat,
       lng: lng,
       speedMps: speed,
       heading: heading,
-      timeMs: t,
+      timeMs: Date.now(),
       accuracy: c.accuracy
     });
     apply(result, { accuracy: c.accuracy });
     acquireWake();
   }
 
-  function onGeoError(err) {
-    var msg = 'Konum alınamadı';
-    if (err && err.code === 1) msg = 'Konum izni reddedildi';
-    else if (err && err.code === 3) msg = 'Konum zaman aşımı';
-    $('status').textContent = msg;
-    $('retryBtn').hidden = false;
+  function fail(err) {
+    if (gotFix) {
+      if (err && err.code === 1) showGeoError(err);
+      else paintFix();
+      return;
+    }
+    if (coarseInFlight) return;
+    if (err && err.code !== 1 && !coarseTried && navigator.geolocation) {
+      coarseTried = true;
+      coarseInFlight = true;
+      $('status').classList.remove('bad');
+      $('status').textContent = 'Hassas konum gecikti, yaklaşık konum deneniyor…';
+      try {
+        navigator.geolocation.getCurrentPosition(onFix, function (e2) {
+          coarseInFlight = false;
+          if (!gotFix) showGeoError(e2 || err);
+        }, { enableHighAccuracy: false, maximumAge: 120000, timeout: 20000 });
+      } catch (e) {
+        coarseInFlight = false;
+        showGeoError(err);
+      }
+      armWatchdog(25000);
+      return;
+    }
+    showGeoError(err);
   }
 
   function startGps() {
-    if (!navigator.geolocation) {
-      $('status').textContent = 'Bu tarayıcı konum vermiyor';
-      $('retryBtn').hidden = false;
+    if (!window.isSecureContext) {
+      showGeoError({ insecure: true });
       return;
     }
-    $('status').textContent = 'Konum izni isteniyor…';
-    $('retryBtn').hidden = true;
-    if (geoWatch != null) navigator.geolocation.clearWatch(geoWatch);
-    geoWatch = navigator.geolocation.watchPosition(onFix, onGeoError, {
-      enableHighAccuracy: true,
-      maximumAge: 1000,
-      timeout: 20000
-    });
+    if (!navigator.geolocation) {
+      showGeoError({ unsupported: true });
+      return;
+    }
+    coarseTried = false;
+    coarseInFlight = false;
+    $('status').classList.remove('bad');
+    $('status').textContent = 'Konum alınıyor…';
+    $('geoError').hidden = true;
+    $('geoError').textContent = '';
+    $('startBtn').disabled = true;
+    $('startBtn').textContent = 'Konum alınıyor…';
+    armWatchdog(70000);
+    var fine = { enableHighAccuracy: true, maximumAge: 15000, timeout: 60000 };
+    var watchOpts = { enableHighAccuracy: true, maximumAge: 2000, timeout: 120000 };
+    try {
+      navigator.geolocation.getCurrentPosition(onFix, fail, fine);
+      if (geoWatch != null) navigator.geolocation.clearWatch(geoWatch);
+      geoWatch = navigator.geolocation.watchPosition(onFix, function (err) {
+        if (err && err.code === 1) fail(err);
+        else if (gotFix) paintFix();
+      }, watchOpts);
+    } catch (e) {
+      showGeoError({ code: 2 });
+    }
   }
 
   function paintSim() {
@@ -541,10 +677,10 @@
     unlockAudio();
     acquireWake();
   });
-  $('retryBtn').addEventListener('click', function () {
-    unlockAudio();
-    acquireWake();
+  $('startBtn').addEventListener('click', function () {
     startGps();
+    try { unlockAudio(); } catch (e) {}
+    try { acquireWake(); } catch (e) {}
   });
   $('mapBtn').addEventListener('click', function () {
     unlockAudio();
@@ -594,8 +730,19 @@
   paintMute();
 
   if ('serviceWorker' in navigator) {
+    var hadController = !!navigator.serviceWorker.controller;
+    var reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (!hadController || reloaded) return;
+      reloaded = true;
+      location.reload();
+    });
     navigator.serviceWorker.register('./sw.js').catch(function () {});
   }
+
+  setInterval(paintFix, 1000);
+
+  if (SIM) $('startBtn').hidden = true;
 
   fetch('eds.geojson').then(function (res) {
     if (!res.ok) throw new Error('veri');
@@ -604,8 +751,12 @@
     model = EDS.buildModel(fc);
     session = EDS.createSession(model);
     if (SIM) startSim(fc);
-    else startGps();
+    else if (pendingPos) onFix(pendingPos);
+    else if (!$('geoError').hidden) { /* keep the iOS error on screen */ }
+    else if ($('startBtn').disabled) $('status').textContent = 'Konum alınıyor…';
+    else if (!gotFix) $('status').textContent = 'Konum için Başlat’a dokun.';
   }).catch(function () {
     $('status').textContent = 'EDS verisi yüklenemedi. Bağlantıyı kontrol edip yenile.';
+    $('status').classList.add('bad');
   });
 })();
