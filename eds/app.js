@@ -31,6 +31,8 @@
   var geoTimer = 0;
   var pendingPos = null;
   var lastConsumed = 0;
+  var lastGeoCode = null;
+  var useHereNext = false;
 
   var fcData = null;
   var fullModel = null;
@@ -145,8 +147,13 @@
   function unlockAudio() {
     var AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
-    if (!actx) actx = new AC();
-    if (actx.state === 'suspended') actx.resume();
+    try {
+      if (!actx) actx = new AC();
+      if (actx.state === 'suspended') {
+        var resumed = actx.resume();
+        if (resumed && resumed.catch) resumed.catch(function () {});
+      }
+    } catch (e) {}
   }
 
   function beep(count, freq) {
@@ -216,6 +223,17 @@
     }).join('\n');
   }
 
+  function routeItem(id) {
+    var items = (routeState && routeState.items) || [];
+    for (var i = 0; i < items.length; i++) if (items[i].id === id) return items[i];
+    return null;
+  }
+
+  function spanText(info) {
+    if (!info || info.exitAlongM == null) return '';
+    return 'Giriş ' + fmtDist(info.alongM) + ' · çıkış ' + fmtDist(info.exitAlongM);
+  }
+
   function renderInside(result) {
     var list = result.insides;
     var primary = list[0];
@@ -223,16 +241,26 @@
     card.hidden = false;
     $('nextCard').hidden = true;
     document.body.classList.add('in-corridor');
+    var ordered = list.slice().sort(function (a, b) {
+      if (!!a.over !== !!b.over) return a.over ? -1 : 1;
+      return a.remainingKm - b.remainingKm;
+    });
+    primary = ordered[0];
+    list = ordered;
     var known = primary.avgKmh != null && primary.limit;
     card.classList.toggle('over', !!primary.over);
     card.classList.toggle('ok', !!(known && !primary.over));
-    $('corName').textContent = primary.name;
-    $('corLimit').textContent = primary.limit ? (Math.round(primary.limit) + ' km/h') : 'Limit yok';
+    var onRoute = routeItem(primary.id);
+    $('corName').textContent = (onRoute && onRoute.displayName) || primary.name;
+    $('corLimit').textContent = primary.limit ? ('Limit ' + Math.round(primary.limit)) : 'Limit yok';
     $('corRoad').textContent = primary.yol || primary.aciklama || kindLabel(primary.kind);
+    $('corSpan').textContent = spanText(onRoute);
     $('corAvg').textContent = primary.avgKmh == null
       ? '–'
       : Math.round(primary.avgKmh).toLocaleString('tr-TR');
-    $('corVerdict').textContent = !known ? '' : (primary.over ? 'Limit üstü' : 'Limit altında');
+    $('corVerdict').textContent = !primary.limit
+      ? ''
+      : (primary.over ? ('Limit üstü · limit ' + Math.round(primary.limit)) : ('Limit altında · limit ' + Math.round(primary.limit)));
     $('corDriven').textContent = fmtKm(primary.drivenKm);
     $('corRemain').textContent = fmtKm(primary.remainingKm);
     $('corElapsed').textContent = fmtDur(primary.elapsedSec);
@@ -269,9 +297,15 @@
     also.replaceChildren();
     list.slice(1).forEach(function (item) {
       var p = document.createElement('p');
+      var info = routeItem(item.id);
       p.className = 'also' + (item.over ? ' over' : '');
       var avg = item.avgKmh == null ? '–' : Math.round(item.avgKmh).toLocaleString('tr-TR');
-      p.textContent = item.name + ' · ort. ' + avg + ' km/h · kalan ' + fmtKm(item.remainingKm);
+      var bits = [(info && info.displayName) || item.name, 'ort. ' + avg + ' km/h'];
+      if (item.limit) bits.push('limit ' + Math.round(item.limit));
+      bits.push('kalan ' + fmtKm(item.remainingKm));
+      if (item.remainingMinSec != null) bits.push('asgari ' + fmtDur(Math.max(0, item.remainingMinSec)));
+      if (info) bits.push(spanText(info));
+      p.textContent = bits.join(' · ');
       also.appendChild(p);
     });
     also.hidden = list.length < 2;
@@ -291,29 +325,52 @@
     return !$('mapWrap').hidden;
   }
 
+  function ensureMapView(lat, lng) {
+    if (!map || map._loaded) return;
+    var ll = (isFinite(lat) && isFinite(lng)) ? [lat, lng] : null;
+    if (!ll && lastFix) ll = [lastFix.lat, lastFix.lng];
+    if (!ll && routeState && routeState.points && routeState.points.length) {
+      ll = [routeState.points[0].lat, routeState.points[0].lng];
+    }
+    if (!ll) ll = [37.1, 30.2];
+    map.setView(ll, lastFix ? 13 : 8);
+    haveView = true;
+  }
+
   function showUser(lat, lng, accuracy) {
-    if (!map || !window.L) return;
+    if (!map || !window.L || !isFinite(lat) || !isFinite(lng)) return;
     var ll = [lat, lng];
     var radius = Math.max(12, Math.min(accuracy || 20, 500));
-    if (!userLayer) {
-      accLayer = L.circle(ll, { radius: radius, color: '#7dd3fc', weight: 1, fillColor: '#38bdf8', fillOpacity: 0.12 });
-      userLayer = L.circleMarker(ll, { radius: 8, color: '#e0f2fe', weight: 3, fillColor: '#38bdf8', fillOpacity: 1 });
-      accLayer.addTo(map);
-      userLayer.addTo(map);
-    } else {
-      userLayer.setLatLng(ll);
-      accLayer.setLatLng(ll);
-      accLayer.setRadius(radius);
-    }
-    if (follow) {
-      var now = performance.now();
-      if (!haveView) {
-        map.setView(ll, 13);
-        haveView = true;
-      } else if (now - lastPan > 450) {
-        map.panTo(ll);
-        lastPan = now;
+    try {
+      ensureMapView(lat, lng);
+      if (!userLayer) {
+        accLayer = L.circle(ll, { radius: radius, color: '#bbf7d0', weight: 1, fillColor: '#22c55e', fillOpacity: 0.18, pane: 'userPane' });
+        userLayer = L.circleMarker(ll, { radius: 12, color: '#ffffff', weight: 4, fillColor: '#16a34a', fillOpacity: 1, pane: 'userPane' });
+        accLayer.addTo(map);
+        userLayer.addTo(map);
+      } else {
+        userLayer.setLatLng(ll);
+        accLayer.setLatLng(ll);
+        accLayer.setRadius(radius);
       }
+    } catch (e) {
+      lastGeoCode = 'harita';
+      paintGpsBar();
+      return;
+    }
+    try {
+      if (follow) {
+        var now = performance.now();
+        if (!haveView) {
+          map.setView(ll, 13);
+          haveView = true;
+        } else if (now - lastPan > 450) {
+          map.panTo(ll);
+          lastPan = now;
+        }
+      }
+    } catch (e2) {
+      mapFail('odak', e2);
     }
   }
 
@@ -321,9 +378,17 @@
     return lines.filter(Boolean).map(esc).join('<br>');
   }
 
+  function mapFail(step, err) {
+    var msg = $('mapMsg');
+    if (!msg) return;
+    msg.hidden = false;
+    msg.textContent = 'Harita hatası (' + step + '). Mesafe göstergesi çalışmaya devam eder.';
+    if (window.console && console.error) console.error(step + ' ' + (err && (err.stack || err.message) || err));
+  }
+
   function ensureMap() {
     if (map) {
-      setTimeout(function () { map.invalidateSize(); }, 60);
+      setTimeout(function () { try { map.invalidateSize(); } catch (e) {} }, 60);
       if (lastFix) showUser(lastFix.lat, lastFix.lng, lastFix.accuracy);
       return;
     }
@@ -332,20 +397,34 @@
       $('mapMsg').textContent = 'Harita yüklenemedi. Mesafe göstergesi çalışmaya devam eder.';
       return;
     }
-    map = L.map('map', { zoomControl: true });
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
-    if (map.attributionControl) map.attributionControl.addAttribution('Kaynak: YolRadar');
-    drawMapLayers(true);
-    map.on('dragstart', function () {
-      follow = false;
-      $('followBtn').hidden = false;
-    });
+    try { map = L.map('map', { zoomControl: true }); }
+    catch (err) { mapFail('harita', err); return; }
+    try {
+      map.createPane('userPane');
+      map.getPane('userPane').style.zIndex = 650;
+    } catch (err) { mapFail('katman', err); return; }
+    try {
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+      if (map.attributionControl) map.attributionControl.addAttribution('Kaynak: YolRadar');
+    } catch (err) { mapFail('fayans', err); return; }
+    try { drawMapLayers(true); }
+    catch (err) { mapFail('çizim', err); return; }
+    try {
+      map.on('dragstart', function () {
+        follow = false;
+        $('followBtn').hidden = false;
+      });
+    } catch (err) { mapFail('sürükle', err); return; }
     setTimeout(function () {
-      map.invalidateSize();
-      if (lastFix) showUser(lastFix.lat, lastFix.lng, lastFix.accuracy);
+      try {
+        map.invalidateSize();
+        if (lastFix) showUser(lastFix.lat, lastFix.lng, lastFix.accuracy);
+      } catch (err) {
+        mapFail('konum', err);
+      }
     }, 80);
   }
 
@@ -361,6 +440,7 @@
     if (!el) return;
     if (!lastFixAt) {
       el.hidden = true;
+      paintGpsBar();
       return;
     }
     var age = Math.max(0, Math.round((Date.now() - lastFixAt) / 1000));
@@ -371,6 +451,27 @@
     if (lastAcc != null && lastAcc > 1000) text += ' · Tam Konum kapalı olabilir';
     el.hidden = false;
     el.textContent = text;
+    paintGpsBar();
+  }
+
+  function paintGpsBar() {
+    var bar = $('gpsBar');
+    if (!bar) return;
+    if (SIM && sim.path) {
+      bar.classList.remove('bad');
+      bar.textContent = 'Sınama GPS · ±8 m · hata yok';
+      return;
+    }
+    var parts = [];
+    if (!lastFixAt) parts.push('Son GPS yok');
+    else {
+      var age = Math.max(0, Math.round((Date.now() - lastFixAt) / 1000));
+      parts.push('Son GPS ' + (age < 2 ? 'şimdi' : age + ' sn'));
+    }
+    parts.push((lastAcc != null && isFinite(lastAcc)) ? ('±' + Math.round(lastAcc) + ' m') : 'doğruluk yok');
+    parts.push(lastGeoCode == null ? 'hata yok' : ('hata ' + lastGeoCode));
+    bar.textContent = parts.join(' · ');
+    bar.classList.toggle('bad', lastGeoCode != null && !gotFix);
   }
 
   function geoCopy(err) {
@@ -415,6 +516,8 @@
     box.hidden = false;
     box.textContent = copy.title + '. ' + copy.hint;
     $('live').textContent = box.textContent;
+    lastGeoCode = (err && err.code != null) ? err.code : (err && err.insecure ? 'https' : 'yok');
+    paintGpsBar();
     var btn = $('startBtn');
     btn.hidden = false;
     btn.disabled = false;
@@ -439,6 +542,7 @@
     $('geoError').hidden = true;
     $('status').classList.remove('bad');
     $('status').textContent = 'Konum açık';
+    lastGeoCode = null;
     $('startBtn').hidden = true;
     $('startBtn').disabled = false;
     paintFix();
@@ -475,34 +579,43 @@
       accuracy: c.accuracy
     });
     apply(result, { accuracy: c.accuracy });
+    paintGpsBar();
+    if (useHereNext) {
+      useHereNext = false;
+      places.start = { label: 'Konumum', lat: lat, lng: lng };
+      $('startInput').value = 'Konumum';
+      savePlaces();
+      if (places.end) computeRoute();
+    }
     acquireWake();
   }
 
-  function fail(err) {
-    if (gotFix) {
-      if (err && err.code === 1) showGeoError(err);
-      else paintFix();
+  function geoOptions(high) {
+    return { enableHighAccuracy: high !== false, maximumAge: 30000, timeout: 45000 };
+  }
+
+  function armWatch(high) {
+    if (!navigator.geolocation) return;
+    if (geoWatch != null) navigator.geolocation.clearWatch(geoWatch);
+    geoWatch = navigator.geolocation.watchPosition(onFix, function (err) {
+      onWatchError(err, high !== false);
+    }, geoOptions(high));
+  }
+
+  function onWatchError(err, wasHigh) {
+    var code = err && err.code;
+    lastGeoCode = code == null ? '?' : code;
+    paintGpsBar();
+    if (gotFix && code !== 1) return;
+    if (code === 1 || !wasHigh || coarseTried) {
+      showGeoError(err || { code: 2 });
       return;
     }
-    if (coarseInFlight) return;
-    if (err && err.code !== 1 && !coarseTried && navigator.geolocation) {
-      coarseTried = true;
-      coarseInFlight = true;
-      $('status').classList.remove('bad');
-      $('status').textContent = 'Hassas konum gecikti, yaklaşık konum deneniyor…';
-      try {
-        navigator.geolocation.getCurrentPosition(onFix, function (e2) {
-          coarseInFlight = false;
-          if (!gotFix) showGeoError(e2 || err);
-        }, { enableHighAccuracy: false, maximumAge: 120000, timeout: 20000 });
-      } catch (e) {
-        coarseInFlight = false;
-        showGeoError(err);
-      }
-      armWatchdog(25000);
-      return;
-    }
+    coarseTried = true;
+    $('status').classList.remove('bad');
+    $('status').textContent = 'Hassas GPS gecikti, yaklaşık konum deneniyor…';
     showGeoError(err);
+    try { armWatch(false); } catch (e) { showGeoError({ code: 2 }); }
   }
 
   function startGps() {
@@ -515,23 +628,25 @@
       return;
     }
     coarseTried = false;
-    coarseInFlight = false;
+    lastGeoCode = null;
     $('status').classList.remove('bad');
     $('status').textContent = 'Konum alınıyor…';
     $('geoError').hidden = true;
     $('geoError').textContent = '';
     $('startBtn').disabled = true;
     $('startBtn').textContent = 'Konum alınıyor…';
-    armWatchdog(70000);
-    var fine = { enableHighAccuracy: true, maximumAge: 15000, timeout: 60000 };
-    var watchOpts = { enableHighAccuracy: true, maximumAge: 2000, timeout: 120000 };
+    paintGpsBar();
+    armWatchdog(50000);
+    var opts = geoOptions(true);
     try {
-      navigator.geolocation.getCurrentPosition(onFix, fail, fine);
-      if (geoWatch != null) navigator.geolocation.clearWatch(geoWatch);
-      geoWatch = navigator.geolocation.watchPosition(onFix, function (err) {
-        if (err && err.code === 1) fail(err);
-        else if (gotFix) paintFix();
-      }, watchOpts);
+      armWatch(true);
+      navigator.geolocation.getCurrentPosition(onFix, function (err) {
+        if (err && err.code === 1) showGeoError(err);
+        else if (!gotFix) {
+          lastGeoCode = err && err.code != null ? err.code : '?';
+          paintGpsBar();
+        }
+      }, opts);
     } catch (e) {
       showGeoError({ code: 2 });
     }
@@ -548,6 +663,7 @@
     });
     var done = !sim.playing && sim.along >= sim.path.lengthM - 1;
     $('status').textContent = done ? 'Sınama bitti · Baştan ile tekrarla' : 'Sınama · ±8 m';
+    paintGpsBar();
   }
 
   function pushSim(timeMs, alerts) {
@@ -564,7 +680,7 @@
   }
 
   function seek(meters, paused) {
-    session = EDS.createSession(model);
+    session = EDS.createSession(activeModel || fullModel || model);
     sim.along = 0;
     var t0 = Date.now();
     var v = sim.speed / 3.6;
@@ -725,51 +841,63 @@
 
   function drawMapLayers(fit) {
     if (!map || !window.L || !fullModel) return;
-    if (edsLayer) map.removeLayer(edsLayer);
-    if (routeLayer) map.removeLayer(routeLayer);
+    ensureMapView();
+    try {
+      if (edsLayer) map.removeLayer(edsLayer);
+      if (routeLayer) map.removeLayer(routeLayer);
+    } catch (err) { mapFail('temizle', err); }
     routeLayer = null;
-    edsLayer = L.layerGroup().addTo(map);
+    try { edsLayer = L.layerGroup().addTo(map); }
+    catch (err) { mapFail('grup', err); return; }
     var on = onRouteIds();
     var hasRoute = !!(routeState && routeState.points && routeState.points.length > 1);
     if (hasRoute) {
-      routeLayer = L.polyline(routeState.points.map(function (p) { return [p.lat, p.lng]; }), {
-        color: '#38bdf8', weight: 6, opacity: 0.9
-      }).addTo(map);
+      try {
+        routeLayer = L.polyline(routeState.points.map(function (p) { return [p.lat, p.lng]; }), {
+          color: '#38bdf8', weight: 6, opacity: 0.9
+        }).addTo(map);
+      } catch (err) { mapFail('rota', err); }
     }
     var bounds = [];
     fullModel.corridors.forEach(function (c) {
-      var hot = !hasRoute || on[c.id];
-      var latlngs = c.latlngs.map(function (p) { return [p.lat, p.lng]; });
-      var style = { color: '#ff4d4d', weight: hot ? 5 : 3, opacity: hot ? 0.95 : 0.28 };
-      if (c.kind === 'corridor_egm') style.dashArray = '7 8';
-      L.polyline(latlngs, style).bindPopup(popupHtml([
-        c.name,
-        c.limit ? ('Limit ' + c.limit + ' km/h') : 'Limit bilinmiyor',
-        c.publishedKm ? ('Tabela ' + c.publishedKm + ' km') : '',
-        c.minTimeLabel ? ('Asgari ' + c.minTimeLabel) : '',
-        c.yol || c.aciklama,
-        precisionLabel(c.precision),
-        c.precisionTr
-      ])).addTo(edsLayer);
-      if (hot) latlngs.forEach(function (ll) { bounds.push(ll); });
+      try {
+        var hot = !hasRoute || on[c.id];
+        var latlngs = c.latlngs.map(function (p) { return [p.lat, p.lng]; });
+        var style = { color: '#ff4d4d', weight: hot ? 5 : 3, opacity: hot ? 0.95 : 0.28 };
+        if (c.kind === 'corridor_egm') style.dashArray = '7 8';
+        L.polyline(latlngs, style).bindPopup(popupHtml([
+          c.name,
+          c.limit ? ('Limit ' + c.limit + ' km/h') : 'Limit bilinmiyor',
+          c.publishedKm ? ('Tabela ' + c.publishedKm + ' km') : '',
+          c.minTimeLabel ? ('Asgari ' + c.minTimeLabel) : '',
+          c.yol || c.aciklama,
+          precisionLabel(c.precision),
+          c.precisionTr
+        ])).addTo(edsLayer);
+        if (hot) latlngs.forEach(function (ll) { bounds.push(ll); });
+      } catch (err) { mapFail(c.id || 'koridor', err); }
     });
     fullModel.radars.forEach(function (r) {
-      var hot = !hasRoute || on[r.id];
-      L.circleMarker([r.lat, r.lng], {
-        radius: hot ? 7 : 4,
-        color: '#ffd089',
-        weight: 2,
-        fillColor: '#ff8a00',
-        fillOpacity: hot ? 0.95 : 0.35
-      }).bindPopup(popupHtml([
-        r.name, r.road, limitLabel(r.limit), 'Sabit radar', precisionLabel(r.precision)
-      ])).addTo(edsLayer);
-      if (hot) bounds.push([r.lat, r.lng]);
+      try {
+        var hotR = !hasRoute || on[r.id];
+        L.circleMarker([r.lat, r.lng], {
+          radius: hotR ? 7 : 4,
+          color: '#ffd089',
+          weight: 2,
+          fillColor: '#ff8a00',
+          fillOpacity: hotR ? 0.95 : 0.35
+        }).bindPopup(popupHtml([
+          r.name, r.road, limitLabel(r.limit), 'Sabit radar', precisionLabel(r.precision)
+        ])).addTo(edsLayer);
+        if (hotR) bounds.push([r.lat, r.lng]);
+      } catch (err) { mapFail(r.id || 'radar', err); }
     });
-    if (routeLayer) routeLayer.bringToBack();
+    if (lastFix) showUser(lastFix.lat, lastFix.lng, lastFix.accuracy);
     if (fit && !lastFix) {
-      var frame = hasRoute ? routeState.points.map(function (p) { return [p.lat, p.lng]; }) : bounds;
-      if (frame.length) map.fitBounds(frame, { padding: [18, 18] });
+      try {
+        var frame = hasRoute ? routeState.points.map(function (p) { return [p.lat, p.lng]; }) : bounds;
+        if (frame.length) map.fitBounds(frame, { padding: [18, 18] });
+      } catch (err) { mapFail('çerçeve', err); }
     }
   }
 
@@ -797,7 +925,9 @@
     }
     items.forEach(function (it) {
       var li = document.createElement('li');
-      var bits = [fmtDist(it.alongM), it.name];
+      var bits = (it.kind !== 'radar' && it.exitAlongM != null)
+        ? ['Giriş ' + fmtDist(it.alongM), 'çıkış ' + fmtDist(it.exitAlongM), it.displayName || it.name]
+        : [fmtDist(it.alongM), it.name];
       if (it.kind === 'radar') bits.push('Sabit radar');
       else if (it.kind === 'egm') bits.push('EGM koridoru');
       else bits.push('Hız koridoru');
@@ -850,6 +980,10 @@
     renderRoute();
     drawMapLayers(false);
     savePlaces();
+    if (!SIM && pendingPos) {
+      lastConsumed = 0;
+      onFix(pendingPos);
+    }
     if (SIM && simBooted) startSim();
   }
 
@@ -950,23 +1084,16 @@
   bindSearch('start');
   bindSearch('end');
   $('useHere').addEventListener('click', function () {
-    function take(lat, lng) {
-      places.start = { label: 'Konumum', lat: lat, lng: lng };
+    useHereNext = true;
+    startGps();
+    if (lastFix) {
+      useHereNext = false;
+      places.start = { label: 'Konumum', lat: lastFix.lat, lng: lastFix.lng };
       $('startInput').value = 'Konumum';
       $('startResults').hidden = true;
       savePlaces();
       if (places.end) computeRoute();
     }
-    if (lastFix) { take(lastFix.lat, lastFix.lng); return; }
-    if (!navigator.geolocation) {
-      $('routeStatus').textContent = 'Konum alınamadı. Önce Başlat’a dokunun.';
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(function (pos) {
-      take(pos.coords.latitude, pos.coords.longitude);
-    }, function () {
-      $('routeStatus').textContent = 'Konum alınamadı. Önce Başlat’a dokunun.';
-    }, { enableHighAccuracy: true, maximumAge: 60000, timeout: 20000 });
   });
   $('swapBtn').addEventListener('click', function () {
     var tmp = places.start;

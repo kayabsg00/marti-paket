@@ -20,6 +20,7 @@
 <body>
 <script>if (location.search.indexOf('sim=1') !== -1) document.documentElement.classList.add('sim');</script>
 <main>
+  <p id="gpsBar" class="gpsbar">GPS yok · doğruluk yok · hata yok</p>
   <header>
     <div class="brand">
       <p class="kicker">Antalya–Denizli verisi</p>
@@ -61,6 +62,7 @@
     </div>
     <h2 id="corName">–</h2>
     <p class="meta" id="corRoad"></p>
+    <p class="spanline" id="corSpan"></p>
     <div class="avg-row">
       <div>
         <p class="kicker">Ortalama hız</p>
