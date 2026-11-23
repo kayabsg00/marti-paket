@@ -557,6 +557,13 @@
     return out;
   }
 
+  function directedCorridorName(name, entryIsStart) {
+    var raw = name || 'Koridor';
+    var parts = raw.split(/\s*[–—]\s*/);
+    if (parts.length !== 2) return raw;
+    return entryIsStart ? (parts[0] + '–' + parts[1]) : (parts[1] + '–' + parts[0]);
+  }
+
   function alongRoute(model, routeLine, thresholdM) {
     var limit = thresholdM || 170;
     var items = [];
@@ -578,6 +585,7 @@
     (model.corridors || []).forEach(function (c) {
       var covered = 0;
       var minAlong = Infinity;
+      var maxAlong = -Infinity;
       for (var s = 0; s < c.latlngs.length - 1; s++) {
         var a = c.latlngs[s];
         var b = c.latlngs[s + 1];
@@ -587,16 +595,31 @@
         if (mp.dist <= limit) {
           covered += segLen;
           if (mp.along < minAlong) minAlong = mp.along;
+          if (mp.along > maxAlong) maxAlong = mp.along;
         }
       }
       var ratio = c.lengthM > 0 ? covered / c.lengthM : 0;
       if (!(covered >= 1500 || (ratio >= 0.5 && covered >= 400))) return;
+      var first = c.latlngs[0];
+      var last = c.latlngs[c.latlngs.length - 1];
+      var pa = projectPolyline(first, routeLine);
+      var pb = projectPolyline(last, routeLine);
+      var entryAlong = minAlong;
+      var exitAlong = maxAlong === -Infinity ? minAlong : maxAlong;
+      var entryIsStart = true;
+      if (pa.dist < 2500 && pb.dist < 2500) {
+        entryAlong = Math.min(pa.along, pb.along);
+        exitAlong = Math.max(pa.along, pb.along);
+        entryIsStart = pa.along <= pb.along;
+      }
       items.push({
         kind: c.kind === 'corridor_egm' ? 'egm' : 'corridor',
         id: c.id,
         name: c.name,
+        displayName: directedCorridorName(c.name, entryIsStart),
         limit: c.limit,
-        alongM: minAlong,
+        alongM: entryAlong,
+        exitAlongM: exitAlong,
         publishedKm: c.publishedKm,
         minTimeLabel: c.minTimeLabel,
         lengthM: c.lengthM,
